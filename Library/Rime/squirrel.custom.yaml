@@ -1,0 +1,53 @@
+patch:
+  us_keyboard_layout: false
+
+  # options: always | never | appropriate == growl_is_running
+  show_notifications_when: never
+
+  style:
+    horizontal: true
+    candidate_list_layout: stacked
+    # candidate_list_layout: linear
+    text_orientation: horizontal
+    font_face: "Sarasa UI SC"
+    # font_face: "HiraginoSansGB-W3"
+    font_point: 16
+    corner_radius: 5
+    border_height: 0
+    border_width: 0
+    color_scheme: dark_temple
+    alpha: 0.85
+
+  "preset_color_schemes/crash":               # 在配色方案列表裏加入標識爲 crash 的新方案
+    name: "测试／Crash!Boom!Bang!"
+    author: "Neo <neo.lee@gmail.com>"
+    back_color: "0xffffff"                    # 候選條底色，24位色值，用十六進制書寫方便些，順序是藍綠紅 0xBBGGRR，下同
+    text_color: "0x000000"                    # 候選條普通文字顏色
+    comment_text_color: "0x0000ff"
+    hilited_candidate_back_color: "0x00ffff"  # 高亮候選項的底色，若與背景色不同就會顯出光棒
+    hilited_candidate_text_color: "0xff0000"  # 高亮候選項的文字顏色，要醒目！
+
+  app_options:
+    com.alfredapp.Alfred:
+      ascii_mode: true
+    com.blacktree.Quicksilver:
+      ascii_mode: true
+    com.apple.Terminal:
+      ascii_mode: true
+      soft_cursor: true
+    com.googlecode.iterm2:
+      ascii_mode: true
+    org.vim.MacVim:
+      ascii_mode: true
+    com.apple.dt.Xcode:
+      ascii_mode: true
+    com.barebones.textwrangler:
+      ascii_mode: true
+    com.macromates.TextMate.preview:
+      ascii_mode: true
+    com.sublimetext.2:
+      ascii_mode: true
+    org.gnu.Aquamacs:
+      ascii_mode: true
+    org.gnu.Emacs:
+      ascii_mode: true
