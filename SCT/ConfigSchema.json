@@ -308,7 +308,7 @@
         {
           "id": "fontPoint",
           "label": "字号",
-          "type": "slider",
+          "type": "stepper",
           "keyPath": "style/font_point",
           "min": 10,
           "max": 32

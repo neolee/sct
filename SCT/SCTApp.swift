@@ -9,9 +9,37 @@ import SwiftUI
 
 @main
 struct SCTApp: App {
+    @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
+
     var body: some Scene {
         WindowGroup {
             ContentView()
         }
+        .commands {
+            // Remove unnecessary menu items
+            CommandGroup(replacing: .newItem) { }
+            CommandGroup(replacing: .saveItem) { }
+            CommandGroup(replacing: .undoRedo) { }
+            CommandGroup(replacing: .pasteboard) { }
+
+            CommandGroup(replacing: .help) {
+                Button("SCT 官网") {
+                    if let url = URL(string: "https://github.com/neolee/sct") {
+                        NSWorkspace.shared.open(url)
+                    }
+                }
+                Button("Squirrel 官网") {
+                    if let url = URL(string: "https://github.com/rime/squirrel") {
+                        NSWorkspace.shared.open(url)
+                    }
+                }
+            }
+        }
+    }
+}
+
+class AppDelegate: NSObject, NSApplicationDelegate {
+    func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
+        return true
     }
 }

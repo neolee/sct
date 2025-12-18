@@ -72,6 +72,14 @@ struct ContentView: View {
             manager.reload()
             schemaStore.loadSchema()
         }
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                Button(action: { manager.deploy() }) {
+                    Label("部署生效", systemImage: "arrow.clockwise")
+                }
+                .help("重新部署 Squirrel 以应用更改")
+            }
+        }
     }
     
     @ViewBuilder

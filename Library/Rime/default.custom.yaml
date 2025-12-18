@@ -1,33 +1,35 @@
 patch:
-  menu:
-    page_size: 9
-  schema_list:
-    - schema: rime_ice
-#    - schema: luna_pinyin
-#    - schema: luna_pinyin_fluency
-#    - schema: luna_pinyin_simp
-#    - schema: cangjie5
-#    - schema: wubi86
-#    - schema: double_pinyin
-#    - schema: double_pinyin_mspy
-#    - schema: double_pinyin_abc
-#    - schema: double_pinyin_flypy
-
   ascii_composer:
     switch_key:
       Caps_Lock: noop
       Shift_L: commit_code
       Shift_R: clear
-
   key_binder:
-    select_first_character: "minus"
-    select_last_character: "equal"
-
     bindings:
-      # 翻页
-      # - { when: has_menu, accept: minus, send: Page_Up }
-      # - { when: has_menu, accept: equal, send: Page_Down }
-      # - { when: has_menu, accept: comma, send: Page_Up }
-      # - { when: has_menu, accept: period, send: Page_Down }
-      - { when: has_menu, accept: bracketleft, send: Page_Up }
-      - { when: has_menu, accept: bracketright, send: Page_Down }
+    - accept: bracketleft
+      send: Page_Up
+      when: has_menu
+    - accept: bracketright
+      send: Page_Down
+      when: has_menu
+    select_first_character: minus
+    select_last_character: equal
+  menu:
+    page_size: 9
+  schema_list:
+  - schema: rime_ice
+  switcher:
+    abbreviate_options: true
+    caption: 方案选单
+    fold_options: true
+    hotkeys:
+    - F4
+    - Control+grave
+    - Control+Shift+grave
+    option_list_separator: ' / '
+    save_options:
+    - ascii_punct
+    - traditionalization
+    - emoji
+    - full_shape
+    - search_single_char

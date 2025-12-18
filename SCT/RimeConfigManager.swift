@@ -25,6 +25,7 @@ final class RimeConfigManager: ObservableObject {
     @Published var statusMessage: String = "正在读取配置..."
     @Published private(set) var mergedConfigs: [ConfigDomain: [String: Any]] = [:]
 
+    private var saveTasks: [String: Task<Void, Never>] = [:]
     private let rimePath: URL
     private let fileManager = FileManager.default
 
@@ -79,9 +80,110 @@ final class RimeConfigManager: ObservableObject {
         loadConfig()
     }
 
+    /// Triggers Squirrel to reload its configuration.
+    func deploy() {
+        let squirrelAppPath = "/Library/Input Methods/Squirrel.app/Contents/MacOS/Squirrel"
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: squirrelAppPath)
+        process.arguments = ["--reload"]
+
+        do {
+            try process.run()
+            statusMessage = "已触发重新部署"
+        } catch {
+            // Fallback: touch the config files if the app is not found or fails
+            statusMessage = "部署失败，尝试更新文件时间戳..."
+            touchConfigFiles()
+        }
+    }
+
+    private func touchConfigFiles() {
+        let files = ["default.custom.yaml", "squirrel.custom.yaml"]
+        for fileName in files {
+            let fileURL = rimePath.appendingPathComponent(fileName)
+            if fileManager.fileExists(atPath: fileURL.path) {
+                try? fileManager.setAttributes([.modificationDate: Date()], ofItemAtPath: fileURL.path)
+            }
+        }
+        statusMessage = "已更新文件时间戳"
+    }
+
     func value(for keyPath: String, in domain: ConfigDomain) -> Any? {
         guard let dictionary = mergedConfigs[domain] else { return nil }
         return value(in: dictionary, keyPath: keyPath)
+    }
+
+    func updateValue(_ value: Any, for keyPath: String, in domain: ConfigDomain) {
+        var finalValue = value
+
+        // Handle Double to ensure clean YAML output without scientific notation
+        if let doubleValue = value as? Double {
+            // Using Decimal and rounding to 4 decimal places
+            let rounded = (doubleValue * 10000).rounded() / 10000
+            finalValue = Decimal(string: String(format: "%.4f", rounded)) ?? rounded
+        }
+
+        // 1. Update mergedConfigs for immediate UI update
+        var merged = mergedConfigs[domain] ?? [:]
+        setNestedValue(finalValue, for: keyPath, in: &merged)
+        mergedConfigs[domain] = merged
+
+        // 2. Sync @Published properties
+        applyMergedValues()
+
+        // 3. Save to .custom.yaml (Debounced)
+        let taskKey = "\(domain.rawValue)/\(keyPath)"
+        saveTasks[taskKey]?.cancel()
+        saveTasks[taskKey] = Task {
+            // Small delay to batch rapid updates (like sliders)
+            try? await Task.sleep(nanoseconds: 300_000_000) // 0.3s
+            if !Task.isCancelled {
+                saveToPatch(finalValue, for: keyPath, in: domain)
+            }
+        }
+    }
+
+    private func setNestedValue(_ value: Any, for keyPath: String, in dictionary: inout [String: Any]) {
+        let components = keyPath.split(separator: "/").map(String.init)
+        setNestedValue(value, for: components[...], in: &dictionary)
+    }
+
+    private func setNestedValue(_ value: Any, for components: ArraySlice<String>, in dictionary: inout [String: Any]) {
+        guard let head = components.first else { return }
+        if components.count == 1 {
+            dictionary[head] = value
+            return
+        }
+        var child = dictionary[head] as? [String: Any] ?? [:]
+        setNestedValue(value, for: components.dropFirst(), in: &child)
+        dictionary[head] = child
+    }
+
+    private func saveToPatch(_ value: Any, for keyPath: String, in domain: ConfigDomain) {
+        let fileName = domain == .default ? "default.custom.yaml" : "squirrel.custom.yaml"
+        let url = rimePath.appendingPathComponent(fileName)
+
+        var root: [String: Any] = [:]
+        if fileManager.fileExists(atPath: url.path),
+           let contents = try? String(contentsOf: url, encoding: .utf8),
+           let existingRoot = try? Yams.load(yaml: contents) as? [String: Any] {
+            root = existingRoot
+        }
+
+        var patch = root["patch"] as? [String: Any] ?? [:]
+        // Use nested structure instead of flat keys for better readability
+        setNestedValue(value, for: keyPath, in: &patch)
+        root["patch"] = patch
+
+        do {
+            // width: -1 prevents unnecessary line breaks in long strings
+            // allowUnicode: true ensures Chinese characters are not escaped
+            let yaml = try Yams.dump(object: root, width: -1, allowUnicode: true)
+            try yaml.write(to: url, atomically: true, encoding: String.Encoding.utf8)
+            statusMessage = "已保存到 \(fileName)"
+        } catch {
+            statusMessage = "保存失败：\(error.localizedDescription)"
+        }
     }
 
     private func loadPatchDictionary(named fileName: String) -> [String: Any] {
@@ -140,9 +242,12 @@ final class RimeConfigManager: ObservableObject {
                 schemaList = []
             }
 
-            if let menu = mergedDefault["menu"] as? [String: Any],
-               let size = menu["page_size"] as? Int {
-                pageSize = size
+            if let menu = mergedDefault["menu"] as? [String: Any] {
+                if let size = menu["page_size"] as? Int {
+                    pageSize = size
+                } else if let size = menu["page_size"] as? Double {
+                    pageSize = Int(size)
+                }
             } else {
                 pageSize = 5
             }
@@ -155,7 +260,14 @@ final class RimeConfigManager: ObservableObject {
             if let style = mergedSquirrel["style"] as? [String: Any] {
                 colorScheme = style["color_scheme"] as? String ?? colorScheme
                 fontFace = style["font_face"] as? String ?? fontFace
-                fontPoint = style["font_point"] as? Int ?? fontPoint
+
+                if let fp = style["font_point"] {
+                    if let intVal = fp as? Int {
+                        fontPoint = intVal
+                    } else if let doubleVal = fp as? Double {
+                        fontPoint = Int(doubleVal)
+                    }
+                }
             }
 
             if let apps = mergedSquirrel["app_options"] as? [String: Any] {
