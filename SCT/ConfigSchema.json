@@ -9,9 +9,9 @@
   },
   "sections": [
     {
-      "id": "general.menu",
-      "title": "候选菜单",
-      "icon": "list.number",
+      "id": "schemes.list",
+      "title": "方案列表",
+      "icon": "list.bullet.indent",
       "targetFile": "default",
       "fields": [
         {
@@ -26,7 +26,15 @@
             "file": "default.yaml",
             "keyPath": "schema_list"
           }
-        },
+        }
+      ]
+    },
+    {
+      "id": "panel.menu",
+      "title": "候选菜单",
+      "icon": "list.number",
+      "targetFile": "default",
+      "fields": [
         {
           "id": "pageSize",
           "label": "候选词个数",

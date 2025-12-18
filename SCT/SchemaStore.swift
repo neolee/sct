@@ -102,7 +102,7 @@ final class SchemaStore: ObservableObject {
         loadSchema()
     }
 
-    private func loadSchema() {
+    func loadSchema() {
         if let bundleURL = Bundle.main.url(forResource: "ConfigSchema", withExtension: "json") {
             loadSchema(from: bundleURL)
             return

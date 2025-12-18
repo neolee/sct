@@ -84,7 +84,7 @@ After saving changes, Squirrel needs to "Deploy" to apply them.
 - [x] Robust patch merging implementation (2025-12-18).
 - [x] BGR <-> RGB color conversion utility (2025-12-18).
 - [x] Schema expansion: update ConfigSchema.json per the grouping decisions and expose values via RimeConfigManager (2025-12-18).
-- [ ] Navigation UI: wire each configuration group to its own `NavigationSplitView` destination; keep SchemaDrivenView as a prototype surface.
+- [x] Navigation UI: wire each configuration group to its own NavigationSplitView destination; keep SchemaDrivenView as a prototype surface (2025-12-18).
 - [ ] Editable controls: add steppers/toggles/tables that modify patch dictionaries and verify merge logic.
 - [ ] Key binder view: build UI for common bindings (commit-first/last, prev/next, paging) and persist changes.
 - [ ] App options table: support add/remove rows with ascii_mode/inline/no_inline/vim_mode toggles plus validation and sorting.

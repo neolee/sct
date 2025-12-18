@@ -3,11 +3,21 @@ import SwiftUI
 struct SchemaDrivenView: View {
     @ObservedObject var schemaStore: SchemaStore
     @ObservedObject var manager: RimeConfigManager
+    let sectionIDs: [String]?
+    let title: String?
+
+    init(schemaStore: SchemaStore, manager: RimeConfigManager, sectionIDs: [String]? = nil, title: String? = nil) {
+        self.schemaStore = schemaStore
+        self.manager = manager
+        self.sectionIDs = sectionIDs
+        self.title = title
+    }
 
     var body: some View {
         Group {
             if let schema = schemaStore.schema {
-                SchemaSectionListView(sections: schema.sections) { section, field in
+                let filteredSections = sectionIDs == nil ? schema.sections : schema.sections.filter { sectionIDs!.contains($0.id) }
+                SchemaSectionListView(sections: filteredSections) { section, field in
                     displayValue(for: field, in: section)
                 }
             } else if let error = schemaStore.errorMessage {
@@ -19,7 +29,7 @@ struct SchemaDrivenView: View {
                     .padding()
             }
         }
-        .navigationTitle("Schema 驱动预览")
+        .navigationTitle(title ?? "Schema 驱动预览")
     }
 
     private func displayValue(for field: SchemaField, in section: SchemaSection) -> String {
