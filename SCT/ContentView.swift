@@ -9,6 +9,7 @@ import SwiftUI
 
 struct ContentView: View {
     @StateObject private var configManager = RimeConfigManager()
+    @StateObject private var schemaStore = SchemaStore()
     @State private var selection: SidebarItem? = .general
 
     var body: some View {
@@ -31,6 +32,8 @@ struct ContentView: View {
                 AppSettingsView(manager: configManager)
             case .advanced:
                 AdvancedSettingsView(reloadAction: configManager.reload)
+            case .schemaPreview:
+                SchemaDrivenView(schemaStore: schemaStore, manager: configManager)
             }
         }
         .frame(minWidth: 960, minHeight: 620)
@@ -49,6 +52,7 @@ private enum SidebarItem: String, CaseIterable, Hashable, Identifiable {
     case shortcuts
     case apps
     case advanced
+    case schemaPreview
 
     var title: String {
         switch self {
@@ -57,6 +61,7 @@ private enum SidebarItem: String, CaseIterable, Hashable, Identifiable {
         case .shortcuts: return "快捷键"
         case .apps: return "应用设置"
         case .advanced: return "高级设置"
+        case .schemaPreview: return "Schema 驱动"
         }
     }
 
@@ -67,6 +72,7 @@ private enum SidebarItem: String, CaseIterable, Hashable, Identifiable {
         case .shortcuts: return "keyboard"
         case .apps: return "rectangle.3.group"
         case .advanced: return "hammer"
+        case .schemaPreview: return "list.bullet.rectangle"
         }
     }
 }

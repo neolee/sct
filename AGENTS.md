@@ -62,6 +62,10 @@ After saving changes, Squirrel needs to "Deploy" to apply them.
 ### File Monitoring
 - Monitor `~/Library/Rime` for external changes to keep the GUI in sync.
 
+### Sandbox & File Access
+- During development we disable the App Sandbox so SCT can access the real `~/Library/Rime` path for schema testing.
+- Before shipping we must re-enable the sandbox and build a security-scoped file access flow (e.g., prompting for `~/Library/Rime` and persisting the bookmark).
+
 ## Current Progress (as of 2025-12-18)
 - [x] Initial project scaffolding.
 - [x] Basic `RimeConfigManager` structure for YAML handling.

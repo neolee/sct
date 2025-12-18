@@ -34,11 +34,19 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		B54D0ADB2EF412FA00C68277 /* Recovered References */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = "Recovered References";
+			sourceTree = "<group>";
+		};
 		B5AF882D2EF3F059000868B9 = {
 			isa = PBXGroup;
 			children = (
 				B5AF88382EF3F059000868B9 /* SCT */,
 				B5AF88372EF3F059000868B9 /* Products */,
+				B54D0ADB2EF412FA00C68277 /* Recovered References */,
 			);
 			sourceTree = "<group>";
 		};
@@ -100,13 +108,13 @@
 			);
 			mainGroup = B5AF882D2EF3F059000868B9;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				B5AF88472EF3F1F2000868B9 /* XCRemoteSwiftPackageReference "Yams" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = B5AF88372EF3F059000868B9 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
-			packageReferences = (
-				B5AF88472EF3F1F2000868B9 /* XCRemoteSwiftPackageReference "Yams" */,
-			);
 			targets = (
 				B5AF88352EF3F059000868B9 /* SCT */,
 			);
@@ -263,10 +271,9 @@
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = S2D42Y29YT;
-				ENABLE_APP_SANDBOX = YES;
+				ENABLE_APP_SANDBOX = NO;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
-				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -295,10 +302,9 @@
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = S2D42Y29YT;
-				ENABLE_APP_SANDBOX = YES;
+				ENABLE_APP_SANDBOX = NO;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
-				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (

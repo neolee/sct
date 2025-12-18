@@ -5,6 +5,11 @@ import Yams
 /// A lightweight configuration loader that reads the available `.custom.yaml` patches.
 /// The goal for now is to exercise the Yams dependency and provide data for the prototype UI.
 final class RimeConfigManager: ObservableObject {
+    enum ConfigDomain: String {
+        case `default`
+        case squirrel
+    }
+
     struct AppOption: Identifiable {
         let id = UUID()
         let bundleID: String
@@ -18,8 +23,10 @@ final class RimeConfigManager: ObservableObject {
     @Published var fontPoint: Int = 16
     @Published var appOptions: [AppOption] = []
     @Published var statusMessage: String = "正在读取配置..."
+    @Published private(set) var mergedConfigs: [ConfigDomain: [String: Any]] = [:]
 
     private let rimePath: URL
+    private let fileManager = FileManager.default
 
     private static let fallbackYAML = """
     menu:
@@ -47,70 +54,123 @@ final class RimeConfigManager: ObservableObject {
     }
 
     func loadConfig() {
-        let defaultCustom = loadPatchDictionary(named: "default.custom.yaml")
-        let squirrelCustom = loadPatchDictionary(named: "squirrel.custom.yaml")
+        let hasDefaultFiles = fileExists(named: "default.yaml") || fileExists(named: "default.custom.yaml")
+        let hasSquirrelFiles = fileExists(named: "squirrel.yaml") || fileExists(named: "squirrel.custom.yaml")
 
-        var hydratedFromDisk = false
-
-        if let menu = defaultCustom?["menu"] as? [String: Any],
-           let size = menu["page_size"] as? Int {
-            pageSize = size
-            hydratedFromDisk = true
-        }
-
-        if let schemas = defaultCustom?["schema_list"] as? [[String: Any]] {
-            schemaList = schemas.compactMap { $0["schema"] as? String }
-            hydratedFromDisk = !schemaList.isEmpty
-        }
-
-        if let style = squirrelCustom?["style"] as? [String: Any] {
-            colorScheme = style["color_scheme"] as? String ?? colorScheme
-            fontFace = style["font_face"] as? String ?? fontFace
-            fontPoint = style["font_point"] as? Int ?? fontPoint
-            hydratedFromDisk = true
-        }
-
-        if let apps = squirrelCustom?["app_options"] as? [String: Any] {
-            appOptions = apps.compactMap { key, value in
-                guard let dict = value as? [String: Any] else { return nil }
-                let ascii = dict["ascii_mode"] as? Bool ?? false
-                return AppOption(bundleID: key, asciiMode: ascii)
-            }
-            .sorted { $0.bundleID < $1.bundleID }
-            hydratedFromDisk = !appOptions.isEmpty
-        }
-
-        if hydratedFromDisk {
-            statusMessage = "已读取 \(rimePath.path)"
-        } else {
+        guard hasDefaultFiles || hasSquirrelFiles else {
             applyFallbackSnapshot()
             statusMessage = "使用示例配置"
+            return
         }
+
+        let defaultBase = loadYamlDictionary(named: "default.yaml")
+        let defaultPatch = loadPatchDictionary(named: "default.custom.yaml")
+        mergedConfigs[.default] = mergedDictionary(base: defaultBase, patch: defaultPatch)
+
+        let squirrelBase = loadYamlDictionary(named: "squirrel.yaml")
+        let squirrelPatch = loadPatchDictionary(named: "squirrel.custom.yaml")
+        mergedConfigs[.squirrel] = mergedDictionary(base: squirrelBase, patch: squirrelPatch)
+
+        applyMergedValues()
+        statusMessage = "已读取 \(rimePath.path)"
     }
 
     func reload() {
         loadConfig()
     }
 
-    private func loadPatchDictionary(named fileName: String) -> [String: Any]? {
+    func value(for keyPath: String, in domain: ConfigDomain) -> Any? {
+        guard let dictionary = mergedConfigs[domain] else { return nil }
+        return value(in: dictionary, keyPath: keyPath)
+    }
+
+    private func loadPatchDictionary(named fileName: String) -> [String: Any] {
         let url = rimePath.appendingPathComponent(fileName)
-        guard FileManager.default.fileExists(atPath: url.path) else {
-            return nil
+        guard fileManager.fileExists(atPath: url.path),
+              let contents = try? String(contentsOf: url, encoding: .utf8),
+              let root = try? Yams.load(yaml: contents) as? [String: Any],
+              let patch = root["patch"] as? [String: Any] else {
+            return [:]
         }
-
-        guard let contents = try? String(contentsOf: url, encoding: .utf8) else {
-            return nil
-        }
-
-        guard
-            let root = try? Yams.load(yaml: contents),
-            let dict = root as? [String: Any],
-            let patch = dict["patch"] as? [String: Any]
-        else {
-            return nil
-        }
-
         return patch
+    }
+
+    private func loadYamlDictionary(named fileName: String) -> [String: Any] {
+        let url = rimePath.appendingPathComponent(fileName)
+        guard fileManager.fileExists(atPath: url.path),
+              let contents = try? String(contentsOf: url, encoding: .utf8),
+              let root = try? Yams.load(yaml: contents) as? [String: Any] else {
+            return [:]
+        }
+        return root
+    }
+
+    private func mergedDictionary(base: [String: Any], patch: [String: Any]) -> [String: Any] {
+        guard !patch.isEmpty else { return base }
+        var result = base
+        for (key, value) in patch {
+            if let patchDict = value as? [String: Any], let baseDict = result[key] as? [String: Any] {
+                result[key] = mergedDictionary(base: baseDict, patch: patchDict)
+            } else {
+                result[key] = value
+            }
+        }
+        return result
+    }
+
+    private func value(in dictionary: [String: Any], keyPath: String) -> Any? {
+        var current: Any? = dictionary
+        for component in keyPath.split(separator: "/") {
+            guard let dict = current as? [String: Any] else { return nil }
+            current = dict[String(component)]
+        }
+        return current
+    }
+
+    private func fileExists(named fileName: String) -> Bool {
+        let url = rimePath.appendingPathComponent(fileName)
+        return fileManager.fileExists(atPath: url.path)
+    }
+
+    private func applyMergedValues() {
+        if let mergedDefault = mergedConfigs[.default] {
+            if let schemas = mergedDefault["schema_list"] as? [[String: Any]] {
+                schemaList = schemas.compactMap { $0["schema"] as? String }
+            } else {
+                schemaList = []
+            }
+
+            if let menu = mergedDefault["menu"] as? [String: Any],
+               let size = menu["page_size"] as? Int {
+                pageSize = size
+            } else {
+                pageSize = 5
+            }
+        } else {
+            schemaList = []
+            pageSize = 5
+        }
+
+        if let mergedSquirrel = mergedConfigs[.squirrel] {
+            if let style = mergedSquirrel["style"] as? [String: Any] {
+                colorScheme = style["color_scheme"] as? String ?? colorScheme
+                fontFace = style["font_face"] as? String ?? fontFace
+                fontPoint = style["font_point"] as? Int ?? fontPoint
+            }
+
+            if let apps = mergedSquirrel["app_options"] as? [String: Any] {
+                appOptions = apps.compactMap { key, value in
+                    guard let dict = value as? [String: Any] else { return nil }
+                    let ascii = dict["ascii_mode"] as? Bool ?? false
+                    return AppOption(bundleID: key, asciiMode: ascii)
+                }
+                .sorted { $0.bundleID < $1.bundleID }
+            } else {
+                appOptions = []
+            }
+        } else {
+            appOptions = []
+        }
     }
 
     private func applyFallbackSnapshot() {
@@ -119,28 +179,12 @@ final class RimeConfigManager: ObservableObject {
             let dict = root as? [String: Any]
         else {
             schemaList = ["rime_ice"]
+            mergedConfigs = [:]
             return
         }
 
-        if let menu = dict["menu"] as? [String: Any] {
-            pageSize = menu["page_size"] as? Int ?? pageSize
-        }
-
-        if let schemas = dict["schema_list"] as? [[String: Any]] {
-            schemaList = schemas.compactMap { $0["schema"] as? String }
-        }
-
-        if let style = dict["style"] as? [String: Any] {
-            colorScheme = style["color_scheme"] as? String ?? colorScheme
-            fontFace = style["font_face"] as? String ?? fontFace
-            fontPoint = style["font_point"] as? Int ?? fontPoint
-        }
-
-        if let apps = dict["app_options"] as? [String: Any] {
-            appOptions = apps.compactMap { key, value in
-                guard let dict = value as? [String: Any] else { return nil }
-                return AppOption(bundleID: key, asciiMode: dict["ascii_mode"] as? Bool ?? false)
-            }
-        }
+        mergedConfigs[.default] = dict
+        mergedConfigs[.squirrel] = dict
+        applyMergedValues()
     }
 }
