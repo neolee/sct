@@ -66,15 +66,30 @@ After saving changes, Squirrel needs to "Deploy" to apply them.
 - During development we disable the App Sandbox so SCT can access the real `~/Library/Rime` path for schema testing.
 - Before shipping we must re-enable the sandbox and build a security-scoped file access flow (e.g., prompting for `~/Library/Rime` and persisting the bookmark).
 
-## Current Progress (as of 2025-12-18)
-- [x] Initial project scaffolding.
-- [x] Basic `RimeConfigManager` structure for YAML handling.
-- [x] UI Prototype with Sidebar navigation and basic forms.
+## Configuration Grouping Decisions
+1. Input Schemes: expose `schema_list` plus the primary `switcher` fields (hotkeys/save_options/fold_options/abbreviate_options/option_list_separator); uncommon keys stay in Advanced YAML mode.
+2. Candidate Panel: manage every `menu` and `style` sub-key, including memorize_size/mutual_exclusive/translucency/show_paging. `keyboard_layout`/`chord_duration`/`show_notifications_when` keep their defaults and do not need GUI.
+3. Input Behaviors: give `ascii_composer` its own module; keep `punctuator` and `recognizer` in the YAML editor only; surface only the frequently used `key_binder` mappings (commit-first/last, paging, etc.).
+4. App Options: the `app_options` table shows four toggle columns (ascii_mode/inline/no_inline/vim_mode) and can grow if we add more flags later.
+5. Skins: preset color schemes remain read-only for now; a richer "skin editor" may come later for advanced users.
+6. YAML Editor: must display the merged base+patch view, highlight patched values, support filtering to "customized only", provide search, and let users enable/disable individual patches with a split/diff view concept.
+7. Sandbox Strategy: keep App Sandbox disabled during development to access real `~/Library/Rime`; re-enable it before release and request that directory via security-scoped bookmarks.
+8. Navigation Layout: the macOS UI keeps the `NavigationSplitView` structure from `ContentView.swift`, mapping each group above to a dedicated sidebar item; `SchemaDrivenView` is only a prototype surface, not the final container for every feature.
+
+## Plan and Progress
+- [x] Initial project scaffolding (2025-12-18).
+- [x] Basic `RimeConfigManager` structure for YAML handling (2025-12-18).
+- [x] UI prototype with `NavigationSplitView` sidebar and basic forms (2025-12-18).
 - [ ] Integration with `Yams` library.
 - [ ] Robust patch merging implementation.
 - [ ] BGR <-> RGB color conversion utility.
-
-## Future Roadmap
+- [ ] Schema expansion: update ConfigSchema.json per the grouping decisions and expose values via RimeConfigManager.
+- [ ] Navigation UI: wire each configuration group to its own `NavigationSplitView` destination; keep SchemaDrivenView as a prototype surface.
+- [ ] Editable controls: add steppers/toggles/tables that modify patch dictionaries and verify merge logic.
+- [ ] Key binder view: build UI for common bindings (commit-first/last, prev/next, paging) and persist changes.
+- [ ] App options table: support add/remove rows with ascii_mode/inline/no_inline/vim_mode toggles plus validation and sorting.
+- [ ] YAML editor prototype: merged + diff views, search/filter, and an Enable Customization switch per entry.
 - [ ] Advanced "Source Code" mode for direct YAML editing.
 - [ ] Schema-driven UI generation to support future Rime features without code changes.
 - [ ] Cloud sync/backup of `.custom.yaml` files.
+- [ ] Sandbox reactivation: re-enable App Sandbox, request `~/Library/Rime` access, persist the bookmark, retest reload/deploy.
