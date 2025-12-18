@@ -1,40 +1,8 @@
 patch:
-  app_options:
-    com.alfredapp.Alfred:
-      ascii_mode: true
-    com.apple.Terminal:
-      ascii_mode: true
-      soft_cursor: true
-    com.apple.dt.Xcode:
-      ascii_mode: true
-    com.barebones.textwrangler:
-      ascii_mode: true
-    com.blacktree.Quicksilver:
-      ascii_mode: true
-    com.googlecode.iterm2:
-      ascii_mode: true
-    com.macromates.TextMate.preview:
-      ascii_mode: true
-    com.sublimetext.2:
-      ascii_mode: true
-    org.gnu.Aquamacs:
-      ascii_mode: true
-    org.gnu.Emacs:
-      ascii_mode: true
-    org.vim.MacVim:
-      ascii_mode: true
-  show_notifications_when: never
-  style:
-    alpha: 0.8
-    border_height: 0
-    border_width: 0
-    candidate_list_layout: stacked
-    color_scheme: dark_temple
-    corner_radius: 5
-    font_face: Sarasa UI SC
-    font_point: 16
-    horizontal: true
-    shadow_size: 4
-    text_orientation: horizontal
-    translucency: true
-  us_keyboard_layout: false
+  style/alpha: 0.75
+  style/color_scheme: dark_temple
+  style/color_scheme_dark: dark_temple  
+  style/font_face: Sarasa UI SC
+  style/font_point: 16
+  style/shadow_size: 2
+  style/translucency: true

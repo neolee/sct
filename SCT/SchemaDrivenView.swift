@@ -108,10 +108,10 @@ struct SchemaFieldRow: View {
 
         case .stepper:
             Stepper(value: Binding(
-                get: { rawValue as? Int ?? Int(field.defaultInt) },
+                get: { manager.intValue(for: field.keyPath, in: domain) ?? Int(field.defaultInt) },
                 set: { manager.updateValue($0, for: field.keyPath, in: domain) }
             ), in: field.minInt...field.maxInt) {
-                Text("\(rawValue as? Int ?? Int(field.defaultInt))")
+                Text("\(manager.intValue(for: field.keyPath, in: domain) ?? Int(field.defaultInt))")
                     .monospacedDigit()
             }
 
@@ -189,13 +189,13 @@ struct SliderControl: View {
         }
         .frame(maxWidth: 200)
         .onAppear {
-            localValue = manager.value(for: field.keyPath, in: domain) as? Double ?? field.min ?? 0
+            localValue = manager.doubleValue(for: field.keyPath, in: domain) ?? field.min ?? 0
         }
         .onChange(of: localValue) { _, newValue in
             manager.updateValue(newValue, for: field.keyPath, in: domain)
         }
         // Sync back if manager changes externally
-        .onChange(of: manager.value(for: field.keyPath, in: domain) as? Double) { _, newValue in
+        .onChange(of: manager.doubleValue(for: field.keyPath, in: domain)) { _, newValue in
             if let nv = newValue, nv != localValue {
                 localValue = nv
             }
@@ -218,6 +218,8 @@ enum SchemaValueFormatter {
             return String(int)
         case let double as Double:
             return double.cleanString
+        case let decimal as Decimal:
+            return NSDecimalNumber(decimal: decimal).doubleValue.cleanString
         case let string as String:
             return string
         case let array as [Any]:

@@ -113,19 +113,37 @@ final class RimeConfigManager: ObservableObject {
         return value(in: dictionary, keyPath: keyPath)
     }
 
+    func doubleValue(for keyPath: String, in domain: ConfigDomain) -> Double? {
+        asDouble(value(for: keyPath, in: domain))
+    }
+
+    func intValue(for keyPath: String, in domain: ConfigDomain) -> Int? {
+        asInt(value(for: keyPath, in: domain))
+    }
+
     func updateValue(_ value: Any, for keyPath: String, in domain: ConfigDomain) {
         var finalValue = value
 
         // Handle Double to ensure clean YAML output without scientific notation
         if let doubleValue = value as? Double {
-            // Using Decimal and rounding to 4 decimal places
+            // Using Decimal with a fixed locale to ensure consistent string conversion
             let rounded = (doubleValue * 10000).rounded() / 10000
-            finalValue = Decimal(string: String(format: "%.4f", rounded)) ?? rounded
+            let formatter = NumberFormatter()
+            formatter.locale = Locale(identifier: "en_US")
+            formatter.maximumFractionDigits = 4
+            formatter.numberStyle = .decimal
+            if let formattedString = formatter.string(from: NSNumber(value: rounded)),
+               let decimal = Decimal(string: formattedString, locale: Locale(identifier: "en_US")) {
+                finalValue = decimal
+            } else {
+                finalValue = rounded
+            }
         }
 
         // 1. Update mergedConfigs for immediate UI update
         var merged = mergedConfigs[domain] ?? [:]
-        setNestedValue(finalValue, for: keyPath, in: &merged)
+        let components = keyPath.split(separator: "/").map(String.init)
+        updateInMemoryValue(finalValue, for: components[...], in: &merged)
         mergedConfigs[domain] = merged
 
         // 2. Sync @Published properties
@@ -143,19 +161,14 @@ final class RimeConfigManager: ObservableObject {
         }
     }
 
-    private func setNestedValue(_ value: Any, for keyPath: String, in dictionary: inout [String: Any]) {
-        let components = keyPath.split(separator: "/").map(String.init)
-        setNestedValue(value, for: components[...], in: &dictionary)
-    }
-
-    private func setNestedValue(_ value: Any, for components: ArraySlice<String>, in dictionary: inout [String: Any]) {
+    private func updateInMemoryValue(_ value: Any, for components: ArraySlice<String>, in dictionary: inout [String: Any]) {
         guard let head = components.first else { return }
         if components.count == 1 {
             dictionary[head] = value
             return
         }
         var child = dictionary[head] as? [String: Any] ?? [:]
-        setNestedValue(value, for: components.dropFirst(), in: &child)
+        updateInMemoryValue(value, for: components.dropFirst(), in: &child)
         dictionary[head] = child
     }
 
@@ -171,8 +184,10 @@ final class RimeConfigManager: ObservableObject {
         }
 
         var patch = root["patch"] as? [String: Any] ?? [:]
-        // Use nested structure instead of flat keys for better readability
-        setNestedValue(value, for: keyPath, in: &patch)
+        
+        // Use flat keys (e.g., "style/font_face") instead of nested structures.
+        // This is the most robust way to patch Rime configs without overwriting sibling keys.
+        patch[keyPath] = value
         root["patch"] = patch
 
         do {
@@ -243,10 +258,8 @@ final class RimeConfigManager: ObservableObject {
             }
 
             if let menu = mergedDefault["menu"] as? [String: Any] {
-                if let size = menu["page_size"] as? Int {
+                if let size = asInt(menu["page_size"]) {
                     pageSize = size
-                } else if let size = menu["page_size"] as? Double {
-                    pageSize = Int(size)
                 }
             } else {
                 pageSize = 5
@@ -261,12 +274,8 @@ final class RimeConfigManager: ObservableObject {
                 colorScheme = style["color_scheme"] as? String ?? colorScheme
                 fontFace = style["font_face"] as? String ?? fontFace
 
-                if let fp = style["font_point"] {
-                    if let intVal = fp as? Int {
-                        fontPoint = intVal
-                    } else if let doubleVal = fp as? Double {
-                        fontPoint = Int(doubleVal)
-                    }
+                if let fp = asInt(style["font_point"]) {
+                    fontPoint = fp
                 }
             }
 
@@ -283,6 +292,20 @@ final class RimeConfigManager: ObservableObject {
         } else {
             appOptions = []
         }
+    }
+
+    private func asDouble(_ value: Any?) -> Double? {
+        if let d = value as? Double { return d }
+        if let i = value as? Int { return Double(i) }
+        if let dec = value as? Decimal { return NSDecimalNumber(decimal: dec).doubleValue }
+        return nil
+    }
+
+    private func asInt(_ value: Any?) -> Int? {
+        if let i = value as? Int { return i }
+        if let d = value as? Double { return Int(d) }
+        if let dec = value as? Decimal { return NSDecimalNumber(decimal: dec).intValue }
+        return nil
     }
 
     private func applyFallbackSnapshot() {
@@ -311,7 +334,13 @@ final class RimeConfigManager: ObservableObject {
                 let components = key.split(separator: "/").map(String.init)
                 insert(value: value, for: components[...], into: &normalized)
             } else {
-                normalized[key] = normalizeValue(value)
+                let normalizedValue = normalizeValue(value)
+                if let dictValue = normalizedValue as? [String: Any],
+                   let existingDict = normalized[key] as? [String: Any] {
+                    normalized[key] = mergedDictionary(base: existingDict, patch: dictValue)
+                } else {
+                    normalized[key] = normalizedValue
+                }
             }
         }
         return normalized
