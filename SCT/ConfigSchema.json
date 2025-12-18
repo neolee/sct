@@ -268,6 +268,30 @@
           "keyPath": "style/inline_candidate"
         },
         {
+          "id": "memorizeSize",
+          "label": "记忆窗口尺寸",
+          "type": "toggle",
+          "keyPath": "style/memorize_size"
+        },
+        {
+          "id": "mutualExclusive",
+          "label": "色彩不叠加",
+          "type": "toggle",
+          "keyPath": "style/mutual_exclusive"
+        },
+        {
+          "id": "translucency",
+          "label": "磨砂效果",
+          "type": "toggle",
+          "keyPath": "style/translucency"
+        },
+        {
+          "id": "showPaging",
+          "label": "显示翻页箭头",
+          "type": "toggle",
+          "keyPath": "style/show_paging"
+        },
+        {
           "id": "fontFace",
           "label": "字体",
           "type": "fontPicker",
@@ -330,6 +354,15 @@
           "max": 20
         },
         {
+          "id": "alpha",
+          "label": "透明度",
+          "type": "slider",
+          "keyPath": "style/alpha",
+          "min": 0,
+          "max": 1,
+          "step": 0.05
+        },
+        {
           "id": "shadowSize",
           "label": "阴影",
           "type": "stepper",
@@ -360,6 +393,7 @@
             {"key": "bundleID", "label": "Bundle ID", "type": "text", "isKey": true},
             {"key": "ascii_mode", "label": "默认英文", "type": "toggle"},
             {"key": "inline", "label": "临时内嵌", "type": "toggle", "optional": true},
+            {"key": "no_inline", "label": "禁用内嵌", "type": "toggle", "optional": true},
             {"key": "vim_mode", "label": "Vim 模式", "type": "toggle", "optional": true}
           ]
         }

@@ -80,10 +80,10 @@ After saving changes, Squirrel needs to "Deploy" to apply them.
 - [x] Initial project scaffolding (2025-12-18).
 - [x] Basic `RimeConfigManager` structure for YAML handling (2025-12-18).
 - [x] UI prototype with `NavigationSplitView` sidebar and basic forms (2025-12-18).
-- [ ] Integration with `Yams` library.
-- [ ] Robust patch merging implementation.
-- [ ] BGR <-> RGB color conversion utility.
-- [ ] Schema expansion: update ConfigSchema.json per the grouping decisions and expose values via RimeConfigManager.
+- [x] Integration with `Yams` library (2025-12-18).
+- [x] Robust patch merging implementation (2025-12-18).
+- [x] BGR <-> RGB color conversion utility (2025-12-18).
+- [x] Schema expansion: update ConfigSchema.json per the grouping decisions and expose values via RimeConfigManager (2025-12-18).
 - [ ] Navigation UI: wire each configuration group to its own `NavigationSplitView` destination; keep SchemaDrivenView as a prototype surface.
 - [ ] Editable controls: add steppers/toggles/tables that modify patch dictionaries and verify merge logic.
 - [ ] Key binder view: build UI for common bindings (commit-first/last, prev/next, paging) and persist changes.

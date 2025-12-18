@@ -86,13 +86,13 @@ final class RimeConfigManager: ObservableObject {
 
     private func loadPatchDictionary(named fileName: String) -> [String: Any] {
         let url = rimePath.appendingPathComponent(fileName)
-        guard fileManager.fileExists(atPath: url.path),
+          guard fileManager.fileExists(atPath: url.path),
               let contents = try? String(contentsOf: url, encoding: .utf8),
               let root = try? Yams.load(yaml: contents) as? [String: Any],
               let patch = root["patch"] as? [String: Any] else {
             return [:]
         }
-        return patch
+          return normalizeRimeDictionary(patch)
     }
 
     private func loadYamlDictionary(named fileName: String) -> [String: Any] {
@@ -102,7 +102,7 @@ final class RimeConfigManager: ObservableObject {
               let root = try? Yams.load(yaml: contents) as? [String: Any] else {
             return [:]
         }
-        return root
+          return normalizeRimeDictionary(root)
     }
 
     private func mergedDictionary(base: [String: Any], patch: [String: Any]) -> [String: Any] {
@@ -176,15 +176,60 @@ final class RimeConfigManager: ObservableObject {
     private func applyFallbackSnapshot() {
         guard
             let root = try? Yams.load(yaml: Self.fallbackYAML),
-            let dict = root as? [String: Any]
+            let dictRaw = root as? [String: Any]
         else {
             schemaList = ["rime_ice"]
             mergedConfigs = [:]
             return
         }
 
+        let dict = normalizeRimeDictionary(dictRaw)
+
         mergedConfigs[.default] = dict
         mergedConfigs[.squirrel] = dict
         applyMergedValues()
+    }
+
+    // MARK: - Dictionary Normalization
+
+    private func normalizeRimeDictionary(_ dictionary: [String: Any]) -> [String: Any] {
+        var normalized: [String: Any] = [:]
+        for (key, value) in dictionary {
+            if key.contains("/") {
+                let components = key.split(separator: "/").map(String.init)
+                insert(value: value, for: components[...], into: &normalized)
+            } else {
+                normalized[key] = normalizeValue(value)
+            }
+        }
+        return normalized
+    }
+
+    private func insert(value: Any, for components: ArraySlice<String>, into dictionary: inout [String: Any]) {
+        guard let head = components.first else { return }
+        if components.count == 1 {
+            dictionary[head] = normalizeValue(value)
+            return
+        }
+
+        var child = dictionary[head] as? [String: Any] ?? [:]
+        insert(value: value, for: components.dropFirst(), into: &child)
+        dictionary[head] = child
+    }
+
+    private func normalizeValue(_ value: Any) -> Any {
+        if let dict = value as? [String: Any] {
+            return normalizeRimeDictionary(dict)
+        }
+        if let array = value as? [[String: Any]] {
+            return array.map { normalizeRimeDictionary($0) }
+        }
+        if let array = value as? [Any] {
+            let dicts = array.compactMap { $0 as? [String: Any] }
+            if dicts.count == array.count {
+                return dicts.map { normalizeRimeDictionary($0) }
+            }
+        }
+        return value
     }
 }
