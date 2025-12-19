@@ -84,9 +84,10 @@ struct SchemaFieldRow: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            HStack {
+            HStack(alignment: .top) {
                 Text(field.label)
                     .fontWeight(.semibold)
+                    .padding(.top, 4)
                 Spacer()
                 controlView
             }
@@ -124,24 +125,29 @@ struct SchemaFieldRow: View {
             .frame(maxWidth: 200)
 
         case .enumeration:
+            let choices = manager.resolveChoices(for: field)
             Picker("", selection: Binding(
-                get: { rawValue as? String ?? field.choices?.first ?? "" },
+                get: { rawValue as? String ?? choices.first ?? "" },
                 set: { manager.updateValue($0, for: field.keyPath, in: domain) }
             )) {
-                ForEach(field.choices ?? [], id: \.self) { choice in
-                    Text(choice).tag(choice)
+                if rawValue == nil {
+                    Text("未设置").tag("")
+                }
+                ForEach(choices, id: \.self) { choice in
+                    Text(manager.choiceLabel(for: field, choice: choice)).tag(choice)
                 }
             }
             .pickerStyle(.menu)
             .labelsHidden()
 
         case .segmented:
+            let choices = manager.resolveChoices(for: field)
             Picker("", selection: Binding(
-                get: { rawValue as? String ?? field.choices?.first ?? "" },
+                get: { rawValue as? String ?? choices.first ?? "" },
                 set: { manager.updateValue($0, for: field.keyPath, in: domain) }
             )) {
-                ForEach(field.choices ?? [], id: \.self) { choice in
-                    Text(choice).tag(choice)
+                ForEach(choices, id: \.self) { choice in
+                    Text(manager.choiceLabel(for: field, choice: choice)).tag(choice)
                 }
             }
             .pickerStyle(.segmented)
@@ -162,6 +168,23 @@ struct SchemaFieldRow: View {
                     .foregroundStyle(.secondary)
             }
 
+        case .fontPicker:
+            let fonts = NSFontManager.shared.availableFontFamilies.sorted()
+            Picker("", selection: Binding(
+                get: { rawValue as? String ?? "Avenir" },
+                set: { manager.updateValue($0, for: field.keyPath, in: domain) }
+            )) {
+                ForEach(fonts, id: \.self) { font in
+                    Text(font).tag(font)
+                }
+            }
+            .pickerStyle(.menu)
+            .labelsHidden()
+            .frame(maxWidth: 200)
+
+        case .multiSelect:
+            MultiSelectControl(field: field, domain: domain, manager: manager)
+
         default:
             Text(SchemaValueFormatter.string(from: rawValue ?? "—"))
                 .font(.callout)
@@ -179,9 +202,9 @@ struct SliderControl: View {
 
     var body: some View {
         HStack {
+            // Removing 'step' to hide tick marks on macOS
             Slider(value: $localValue,
-                   in: (field.min ?? 0)...(field.max ?? 1),
-                   step: field.step ?? 0.01)
+                   in: (field.min ?? 0)...(field.max ?? 1))
             Text(String(format: "%.2f", localValue))
                 .monospacedDigit()
                 .foregroundStyle(.secondary)
@@ -200,6 +223,45 @@ struct SliderControl: View {
                 localValue = nv
             }
         }
+    }
+}
+
+struct MultiSelectControl: View {
+    let field: SchemaField
+    let domain: RimeConfigManager.ConfigDomain
+    @ObservedObject var manager: RimeConfigManager
+
+    var body: some View {
+        let currentValues = manager.value(for: field.keyPath, in: domain) as? [String] ?? []
+        let choices = manager.resolveChoices(for: field)
+
+        VStack(alignment: .leading, spacing: 6) {
+            ForEach(choices, id: \.self) { choice in
+                HStack {
+                    Spacer()
+                    Text(manager.choiceLabel(for: field, choice: choice))
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                    Toggle("", isOn: Binding(
+                        get: { currentValues.contains(choice) },
+                        set: { isSelected in
+                            var newValues = currentValues
+                            if isSelected {
+                                if !newValues.contains(choice) {
+                                    newValues.append(choice)
+                                }
+                            } else {
+                                newValues.removeAll { $0 == choice }
+                            }
+                            manager.updateValue(newValues, for: field.keyPath, in: domain)
+                        }
+                    ))
+                    .toggleStyle(.checkbox)
+                    .labelsHidden()
+                }
+            }
+        }
+        .frame(maxWidth: 220)
     }
 }
 

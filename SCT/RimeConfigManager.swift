@@ -121,6 +121,57 @@ final class RimeConfigManager: ObservableObject {
         asInt(value(for: keyPath, in: domain))
     }
 
+    /// Resolves choices for a field, either from fixed choices or a reference to another config path.
+    func resolveChoices(for field: SchemaField) -> [String] {
+        if let choices = field.choices {
+            return choices
+        }
+
+        if let ref = field.choicesRef {
+            let domains: [ConfigDomain] = [.squirrel, .default]
+            for domain in domains {
+                if let dict = value(for: ref, in: domain) as? [String: Any] {
+                    return dict.keys.sorted()
+                }
+            }
+        }
+
+        return []
+    }
+
+    /// Returns a user-friendly label for a choice ID.
+    func choiceLabel(for field: SchemaField, choice: String) -> String {
+        // Hardcoded labels for common Rime options (can be moved to Schema or Localization later)
+        let commonLabels: [String: String] = [
+            "ascii_punct": "英文标点",
+            "traditionalization": "简繁体",
+            "emoji": "Emoji",
+            "full_shape": "全角半角",
+            "search_single_char": "单字模式"
+        ]
+
+        if let label = commonLabels[choice] {
+            return label
+        }
+
+        if field.choices != nil {
+            return choice // Fixed choices are already labels
+        }
+
+        if let ref = field.choicesRef {
+            let domains: [ConfigDomain] = [.squirrel, .default]
+            for domain in domains {
+                if let dict = value(for: ref, in: domain) as? [String: Any],
+                   let item = dict[choice] as? [String: Any],
+                   let name = item["name"] as? String {
+                    return name
+                }
+            }
+        }
+
+        return choice
+    }
+
     func updateValue(_ value: Any, for keyPath: String, in domain: ConfigDomain) {
         var finalValue = value
 
@@ -184,7 +235,7 @@ final class RimeConfigManager: ObservableObject {
         }
 
         var patch = root["patch"] as? [String: Any] ?? [:]
-        
+
         // Use flat keys (e.g., "style/font_face") instead of nested structures.
         // This is the most robust way to patch Rime configs without overwriting sibling keys.
         patch[keyPath] = value
