@@ -40,6 +40,9 @@ final class RimeConfigManager: ObservableObject {
     private let rimePath: URL
     private let fileManager = FileManager.default
 
+    private var folderMonitor: DispatchSourceFileSystemObject?
+    private var folderDescriptor: Int32 = -1
+
     private static let fallbackYAML = """
     menu:
       page_size: 9
@@ -63,6 +66,36 @@ final class RimeConfigManager: ObservableObject {
         .appendingPathComponent("Rime", isDirectory: true)) {
         self.rimePath = rimePath
         loadConfig()
+        startMonitoring()
+    }
+
+    deinit {
+        folderMonitor?.cancel()
+    }
+
+    private func startMonitoring() {
+        folderDescriptor = open(rimePath.path, O_EVTONLY)
+        guard folderDescriptor != -1 else { return }
+
+        folderMonitor = DispatchSource.makeFileSystemObjectSource(
+            fileDescriptor: folderDescriptor,
+            eventMask: .write,
+            queue: DispatchQueue.main
+        )
+
+        folderMonitor?.setEventHandler { [weak self] in
+            // Directory content changed (file added, removed, or modified)
+            // We use a small delay to avoid multiple rapid reloads
+            self?.loadConfig()
+        }
+
+        folderMonitor?.setCancelHandler { [weak self] in
+            if let descriptor = self?.folderDescriptor {
+                close(descriptor)
+            }
+        }
+
+        folderMonitor?.resume()
     }
 
     func loadConfig() {
