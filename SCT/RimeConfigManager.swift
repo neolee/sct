@@ -16,7 +16,15 @@ final class RimeConfigManager: ObservableObject {
         let asciiMode: Bool
     }
 
+    struct RimeSchema: Identifiable, Hashable {
+        var id: String { schemaID }
+        let schemaID: String
+        let name: String
+        let isBuiltIn: Bool
+    }
+
     @Published var schemaList: [String] = ["正在读取..."]
+    @Published var availableSchemas: [RimeSchema] = []
     @Published var pageSize: Int = 5
     @Published var colorScheme: String = "purity_of_form_custom"
     @Published var fontFace: String = "Avenir"
@@ -24,6 +32,7 @@ final class RimeConfigManager: ObservableObject {
     @Published var appOptions: [AppOption] = []
     @Published var statusMessage: String = "正在读取配置..."
     @Published private(set) var mergedConfigs: [ConfigDomain: [String: Any]] = [:]
+    @Published private(set) var patchConfigs: [ConfigDomain: [String: Any]] = [:]
 
     private var saveTasks: [String: Task<Void, Never>] = [:]
     private let rimePath: URL
@@ -66,14 +75,68 @@ final class RimeConfigManager: ObservableObject {
 
         let defaultBase = loadYamlDictionary(named: "default.yaml")
         let defaultPatch = loadPatchDictionary(named: "default.custom.yaml")
+        patchConfigs[.default] = defaultPatch
         mergedConfigs[.default] = mergedDictionary(base: defaultBase, patch: defaultPatch)
 
         let squirrelBase = loadYamlDictionary(named: "squirrel.yaml")
         let squirrelPatch = loadPatchDictionary(named: "squirrel.custom.yaml")
+        patchConfigs[.squirrel] = squirrelPatch
         mergedConfigs[.squirrel] = mergedDictionary(base: squirrelBase, patch: squirrelPatch)
 
+        parseAvailableSchemas()
         applyMergedValues()
         statusMessage = "已读取 \(rimePath.path)"
+    }
+
+    private func parseAvailableSchemas() {
+        let url = rimePath.appendingPathComponent("default.yaml")
+        guard let content = try? String(contentsOf: url, encoding: .utf8) else { return }
+
+        var schemas: [RimeSchema] = []
+        let lines = content.components(separatedBy: .newlines)
+
+        // Regex to match: - schema: id  # name
+        let pattern = #"-\s+schema:\s+([a-zA-Z0-9_]+)(?:\s+#\s*(.*))?"#
+        guard let regex = try? NSRegularExpression(pattern: pattern) else { return }
+
+        for line in lines {
+            let range = NSRange(line.startIndex..<line.endIndex, in: line)
+            if let match = regex.firstMatch(in: line, options: [], range: range) {
+                if let idRange = Range(match.range(at: 1), in: line) {
+                    let id = String(line[idRange])
+                    var name = id
+                    if match.numberOfRanges > 2, let nameRange = Range(match.range(at: 2), in: line) {
+                        let extractedName = String(line[nameRange]).trimmingCharacters(in: .whitespaces)
+                        if !extractedName.isEmpty {
+                            name = extractedName
+                        }
+                    }
+                    schemas.append(RimeSchema(schemaID: id, name: name, isBuiltIn: true))
+                }
+            }
+        }
+
+        // Also look for other *.schema.yaml files in the directory
+        if let files = try? fileManager.contentsOfDirectory(at: rimePath, includingPropertiesForKeys: nil) {
+            for file in files where file.pathExtension == "yaml" && file.lastPathComponent.contains(".schema.yaml") {
+                let id = file.lastPathComponent.replacingOccurrences(of: ".schema.yaml", with: "")
+                if !schemas.contains(where: { $0.schemaID == id }) {
+                    let name = getSchemaName(from: file) ?? id
+                    schemas.append(RimeSchema(schemaID: id, name: name, isBuiltIn: false))
+                }
+            }
+        }
+
+        self.availableSchemas = schemas
+    }
+
+    private func getSchemaName(from url: URL) -> String? {
+        guard let content = try? String(contentsOf: url, encoding: .utf8),
+              let dict = try? Yams.load(yaml: content) as? [String: Any],
+              let schema = dict["schema"] as? [String: Any] else {
+            return nil
+        }
+        return schema["name"] as? String
     }
 
     func reload() {
@@ -111,6 +174,10 @@ final class RimeConfigManager: ObservableObject {
     func value(for keyPath: String, in domain: ConfigDomain) -> Any? {
         guard let dictionary = mergedConfigs[domain] else { return nil }
         return value(in: dictionary, keyPath: keyPath)
+    }
+
+    func mergedConfig(for domain: ConfigDomain) -> [String: Any] {
+        return mergedConfigs[domain] ?? [:]
     }
 
     func doubleValue(for keyPath: String, in domain: ConfigDomain) -> Double? {
@@ -197,6 +264,11 @@ final class RimeConfigManager: ObservableObject {
         updateInMemoryValue(finalValue, for: components[...], in: &merged)
         mergedConfigs[domain] = merged
 
+        // 1.5 Update patchConfigs for YAML editor
+        var patch = patchConfigs[domain] ?? [:]
+        patch[keyPath] = finalValue
+        patchConfigs[domain] = patch
+
         // 2. Sync @Published properties
         applyMergedValues()
 
@@ -211,7 +283,44 @@ final class RimeConfigManager: ObservableObject {
             }
         }
     }
+    func removePatch(for keyPath: String, in domain: ConfigDomain) {
+        // 1. Update patchConfigs
+        var patch = patchConfigs[domain] ?? [:]
+        patch.removeValue(forKey: keyPath)
+        patchConfigs[domain] = patch
 
+        // 2. Reload everything to get back to base values
+        loadConfig()
+
+        // 3. Save the updated patch file
+        saveFullPatch(in: domain)
+    }
+
+    private func saveFullPatch(in domain: ConfigDomain) {
+        let patch = patchConfigs[domain] ?? [:]
+        let fileName = "\(domain.rawValue).custom.yaml"
+        let url = rimePath.appendingPathComponent(fileName)
+
+        let root: [String: Any] = ["patch": patch]
+        if let yaml = try? Yams.dump(object: root, allowUnicode: true) {
+            try? yaml.write(to: url, atomically: true, encoding: .utf8)
+            statusMessage = "已更新 \(fileName)"
+        }
+    }
+
+    func loadRawYaml(for domain: ConfigDomain) -> String {
+        let fileName = "\(domain.rawValue).custom.yaml"
+        let url = rimePath.appendingPathComponent(fileName)
+        return (try? String(contentsOf: url, encoding: .utf8)) ?? "patch:\n"
+    }
+
+    func saveRawYaml(_ content: String, for domain: ConfigDomain) {
+        let fileName = "\(domain.rawValue).custom.yaml"
+        let url = rimePath.appendingPathComponent(fileName)
+        try? content.write(to: url, atomically: true, encoding: .utf8)
+        loadConfig() // Reload to sync UI
+        statusMessage = "已保存 \(fileName)"
+    }
     private func updateInMemoryValue(_ value: Any, for components: ArraySlice<String>, in dictionary: inout [String: Any]) {
         guard let head = components.first else { return }
         if components.count == 1 {

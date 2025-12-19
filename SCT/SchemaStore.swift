@@ -90,6 +90,8 @@ enum SchemaFieldType: String, Decodable {
     case collection
     case keyMapping
     case colorBGR
+    case appOptions
+    case keyBinder
 }
 
 // MARK: - Store

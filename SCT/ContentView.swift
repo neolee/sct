@@ -14,9 +14,9 @@ enum SidebarItem: String, CaseIterable, Identifiable {
     case apps
     case advanced
     case prototype
-    
+
     var id: String { rawValue }
-    
+
     var title: String {
         switch self {
         case .schemes: return "输入方案"
@@ -27,7 +27,7 @@ enum SidebarItem: String, CaseIterable, Identifiable {
         case .prototype: return "Schema 驱动预览"
         }
     }
-    
+
     var icon: String {
         switch self {
         case .schemes: return "list.bullet.indent"
@@ -44,7 +44,7 @@ struct ContentView: View {
     @StateObject private var manager = RimeConfigManager()
     @StateObject private var schemaStore = SchemaStore()
     @State private var selection: SidebarItem? = .schemes
-    
+
     var body: some View {
         NavigationSplitView {
             List(SidebarItem.allCases, selection: $selection) { item in
@@ -72,16 +72,8 @@ struct ContentView: View {
             manager.reload()
             schemaStore.loadSchema()
         }
-        .toolbar {
-            ToolbarItem(placement: .primaryAction) {
-                Button(action: { manager.deploy() }) {
-                    Label("部署生效", systemImage: "arrow.clockwise")
-                }
-                .help("重新部署 Squirrel 以应用更改")
-            }
-        }
     }
-    
+
     @ViewBuilder
     private func detailView(for item: SidebarItem) -> some View {
         switch item {
@@ -101,38 +93,16 @@ struct ContentView: View {
     }
 }
 
-struct AdvancedSettingsView: View {
-    @ObservedObject var manager: RimeConfigManager
-    
-    var body: some View {
-        VStack(spacing: 20) {
-            Image(systemName: "gearshape.2")
-                .font(.system(size: 64))
-                .foregroundStyle(.secondary)
-            
-            Text("高级设置")
-                .font(.title)
-            
-            Text("此处将提供 YAML 编辑器和部署功能。")
-                .foregroundStyle(.secondary)
-            
-            HStack(spacing: 16) {
-                Button(action: {
-                    manager.reload()
-                }) {
-                    Label("重新加载", systemImage: "arrow.clockwise")
+extension View {
+    func rimeToolbar(manager: RimeConfigManager) -> some View {
+        self.toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                Button(action: { manager.deploy() }) {
+                    Image(systemName: "arrow.clockwise")
                 }
-                
-                Button(action: {
-                    // manager.deploy() // If deploy is implemented
-                }) {
-                    Label("部署更改", systemImage: "paperplane.fill")
-                }
-                .buttonStyle(.borderedProminent)
+                .help("重新部署 Squirrel 以应用更改")
             }
-            .controlSize(.large)
         }
-        .navigationTitle("高级设置")
     }
 }
 

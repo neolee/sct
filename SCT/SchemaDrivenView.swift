@@ -28,6 +28,7 @@ struct SchemaDrivenView: View {
             }
         }
         .navigationTitle(title ?? "Schema 驱动预览")
+        .rimeToolbar(manager: manager)
     }
 }
 
@@ -185,6 +186,21 @@ struct SchemaFieldRow: View {
         case .multiSelect:
             MultiSelectControl(field: field, domain: domain, manager: manager)
 
+        case .schemaList:
+            SchemaListControl(field: field, domain: domain, manager: manager)
+
+        case .appOptions:
+            AppOptionsControl(field: field, domain: domain, manager: manager)
+
+        case .keyBinder:
+            KeyBinderControl(field: field, domain: domain, manager: manager)
+
+        case .keyMapping:
+            KeyMappingControl(field: field, domain: domain, manager: manager)
+
+        case .hotkeyList:
+            HotkeyListControl(field: field, domain: domain, manager: manager)
+
         default:
             Text(SchemaValueFormatter.string(from: rawValue ?? "—"))
                 .font(.callout)
@@ -202,9 +218,13 @@ struct SliderControl: View {
 
     var body: some View {
         HStack {
-            // Removing 'step' to hide tick marks on macOS
-            Slider(value: $localValue,
-                   in: (field.min ?? 0)...(field.max ?? 1))
+            Slider(value: Binding(
+                get: { localValue },
+                set: { newValue in
+                    let step = field.step ?? 0.05
+                    localValue = (newValue / step).rounded() * step
+                }
+            ), in: (field.min ?? 0)...(field.max ?? 1))
             Text(String(format: "%.2f", localValue))
                 .monospacedDigit()
                 .foregroundStyle(.secondary)
@@ -262,6 +282,282 @@ struct MultiSelectControl: View {
             }
         }
         .frame(maxWidth: 220)
+    }
+}
+
+struct SchemaListControl: View {
+    let field: SchemaField
+    let domain: RimeConfigManager.ConfigDomain
+    @ObservedObject var manager: RimeConfigManager
+
+    var body: some View {
+        let availableSchemas = manager.availableSchemas
+        let selectedSchemaIDs = (manager.mergedConfig(for: domain)[field.keyPath] as? [[String: Any]])?
+            .compactMap { $0["schema"] as? String } ?? []
+
+        VStack(alignment: .leading, spacing: 8) {
+            ForEach(availableSchemas, id: \.id) { schema in
+                HStack {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(schema.name)
+                            .font(.body)
+                        Text(schema.id)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                    Toggle("", isOn: Binding(
+                        get: { selectedSchemaIDs.contains(schema.id) },
+                        set: { isSelected in
+                            var currentList = (manager.mergedConfig(for: domain)[field.keyPath] as? [[String: Any]]) ?? []
+                            if isSelected {
+                                if !currentList.contains(where: { ($0["schema"] as? String) == schema.id }) {
+                                    currentList.append(["schema": schema.id])
+                                }
+                            } else {
+                                currentList.removeAll { ($0["schema"] as? String) == schema.id }
+                            }
+                            manager.updateValue(currentList, for: field.keyPath, in: domain)
+                        }
+                    ))
+                    .toggleStyle(.checkbox)
+                    .labelsHidden()
+                }
+                .padding(.vertical, 2)
+            }
+        }
+        .frame(maxWidth: 300)
+    }
+}
+
+struct AppOptionsControl: View {
+    let field: SchemaField
+    let domain: RimeConfigManager.ConfigDomain
+    @ObservedObject var manager: RimeConfigManager
+
+    @State private var newBundleID: String = ""
+
+    var body: some View {
+        let options = (manager.mergedConfig(for: domain)[field.keyPath] as? [String: [String: Any]]) ?? [:]
+        let sortedKeys = options.keys.sorted()
+
+        VStack(alignment: .leading, spacing: 12) {
+            // Header
+            HStack {
+                Text("Bundle ID").frame(width: 150, alignment: .leading)
+                Text("ASCII").frame(width: 50)
+                Text("Inline").frame(width: 50)
+                Text("NoInline").frame(width: 60)
+                Text("Vim").frame(width: 40)
+                Spacer()
+            }
+            .font(.caption.bold())
+            .foregroundStyle(.secondary)
+
+            ForEach(sortedKeys, id: \.self) { bundleID in
+                HStack {
+                    Text(bundleID)
+                        .frame(width: 150, alignment: .leading)
+                        .font(.system(.body, design: .monospaced))
+
+                    flagToggle(bundleID: bundleID, flag: "ascii_mode").frame(width: 50)
+                    flagToggle(bundleID: bundleID, flag: "inline").frame(width: 50)
+                    flagToggle(bundleID: bundleID, flag: "no_inline").frame(width: 60)
+                    flagToggle(bundleID: bundleID, flag: "vim_mode").frame(width: 40)
+
+                    Spacer()
+
+                    Button(role: .destructive) {
+                        var currentOptions = options
+                        currentOptions.removeValue(forKey: bundleID)
+                        manager.updateValue(currentOptions, for: field.keyPath, in: domain)
+                    } label: {
+                        Image(systemName: "trash")
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(.red)
+                }
+            }
+
+            Divider()
+
+            HStack {
+                TextField("添加 Bundle ID (如 com.apple.Terminal)", text: $newBundleID)
+                    .textFieldStyle(.roundedBorder)
+
+                Button("添加") {
+                    guard !newBundleID.isEmpty else { return }
+                    var currentOptions = options
+                    if currentOptions[newBundleID] == nil {
+                        currentOptions[newBundleID] = [:]
+                        manager.updateValue(currentOptions, for: field.keyPath, in: domain)
+                    }
+                    newBundleID = ""
+                }
+                .disabled(newBundleID.isEmpty)
+            }
+        }
+        .padding(8)
+        .background(Color(NSColor.controlBackgroundColor))
+        .cornerRadius(8)
+        .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.secondary.opacity(0.2)))
+    }
+
+    @ViewBuilder
+    private func flagToggle(bundleID: String, flag: String) -> some View {
+        let options = (manager.mergedConfig(for: domain)[field.keyPath] as? [String: [String: Any]]) ?? [:]
+        let flags = options[bundleID] ?? [:]
+        let isOn = flags[flag] as? Bool ?? false
+
+        Toggle("", isOn: Binding(
+            get: { isOn },
+            set: { newValue in
+                var currentOptions = options
+                var currentFlags = currentOptions[bundleID] ?? [:]
+                if newValue {
+                    currentFlags[flag] = true
+                } else {
+                    currentFlags.removeValue(forKey: flag)
+                }
+                currentOptions[bundleID] = currentFlags
+                manager.updateValue(currentOptions, for: field.keyPath, in: domain)
+            }
+        ))
+        .toggleStyle(.checkbox)
+        .labelsHidden()
+    }
+}
+
+struct KeyBinderControl: View {
+    let field: SchemaField
+    let domain: RimeConfigManager.ConfigDomain
+    @ObservedObject var manager: RimeConfigManager
+
+    var body: some View {
+        let bindings = (manager.mergedConfig(for: domain)[field.keyPath] as? [[String: Any]]) ?? []
+
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text("When").frame(width: 80, alignment: .leading)
+                Text("Accept").frame(width: 100, alignment: .leading)
+                Text("Send/Toggle").frame(width: 120, alignment: .leading)
+                Spacer()
+            }
+            .font(.caption.bold())
+            .foregroundStyle(.secondary)
+
+            ForEach(0..<bindings.count, id: \.self) { index in
+                let binding = bindings[index]
+                HStack {
+                    Text(binding["when"] as? String ?? "always")
+                        .frame(width: 80, alignment: .leading)
+                    Text(binding["accept"] as? String ?? "")
+                        .frame(width: 100, alignment: .leading)
+                    Text((binding["send"] as? String) ?? (binding["toggle"] as? String) ?? "")
+                        .frame(width: 120, alignment: .leading)
+
+                    Spacer()
+
+                    Button(role: .destructive) {
+                        var currentBindings = bindings
+                        currentBindings.remove(at: index)
+                        manager.updateValue(currentBindings, for: field.keyPath, in: domain)
+                    } label: {
+                        Image(systemName: "trash")
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(.red)
+                }
+            }
+        }
+        .padding(8)
+        .background(Color(NSColor.controlBackgroundColor))
+        .cornerRadius(8)
+        .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.secondary.opacity(0.2)))
+    }
+}
+
+struct KeyMappingControl: View {
+    let field: SchemaField
+    let domain: RimeConfigManager.ConfigDomain
+    @ObservedObject var manager: RimeConfigManager
+
+    var body: some View {
+        let mapping = (manager.mergedConfig(for: domain)[field.keyPath] as? [String: String]) ?? [:]
+        let keys = field.keys ?? []
+        let choices = field.choices ?? []
+
+        VStack(alignment: .leading, spacing: 8) {
+            ForEach(keys, id: \.self) { key in
+                HStack {
+                    Text(key)
+                        .frame(width: 100, alignment: .leading)
+
+                    Picker("", selection: Binding(
+                        get: { mapping[key] ?? "noop" },
+                        set: { newValue in
+                            var currentMapping = mapping
+                            currentMapping[key] = newValue
+                            manager.updateValue(currentMapping, for: field.keyPath, in: domain)
+                        }
+                    )) {
+                        ForEach(choices, id: \.self) { choice in
+                            Text(choice).tag(choice)
+                        }
+                    }
+                    .pickerStyle(.menu)
+                    .labelsHidden()
+                    .frame(maxWidth: 150)
+                }
+            }
+        }
+    }
+}
+
+struct HotkeyListControl: View {
+    let field: SchemaField
+    let domain: RimeConfigManager.ConfigDomain
+    @ObservedObject var manager: RimeConfigManager
+
+    @State private var newHotkey: String = ""
+
+    var body: some View {
+        let hotkeys = (manager.mergedConfig(for: domain)[field.keyPath] as? [String]) ?? []
+
+        VStack(alignment: .leading, spacing: 8) {
+            ForEach(hotkeys, id: \.self) { hotkey in
+                HStack {
+                    Text(hotkey)
+                        .font(.system(.body, design: .monospaced))
+                    Spacer()
+                    Button(role: .destructive) {
+                        var currentHotkeys = hotkeys
+                        currentHotkeys.removeAll { $0 == hotkey }
+                        manager.updateValue(currentHotkeys, for: field.keyPath, in: domain)
+                    } label: {
+                        Image(systemName: "trash")
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(.red)
+                }
+            }
+
+            HStack {
+                TextField("添加快捷键 (如 Control+grave)", text: $newHotkey)
+                    .textFieldStyle(.roundedBorder)
+                Button("添加") {
+                    guard !newHotkey.isEmpty else { return }
+                    var currentHotkeys = hotkeys
+                    if !currentHotkeys.contains(newHotkey) {
+                        currentHotkeys.append(newHotkey)
+                        manager.updateValue(currentHotkeys, for: field.keyPath, in: domain)
+                    }
+                    newHotkey = ""
+                }
+                .disabled(newHotkey.isEmpty)
+            }
+        }
+        .frame(maxWidth: 300)
     }
 }
 
