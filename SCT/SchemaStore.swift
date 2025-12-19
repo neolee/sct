@@ -1,5 +1,6 @@
 import Foundation
 import Combine
+import AppKit
 
 // MARK: - Schema Models
 
@@ -99,9 +100,11 @@ enum SchemaFieldType: String, Decodable {
 final class SchemaStore: ObservableObject {
     @Published var schema: ConfigSchema?
     @Published var errorMessage: String?
+    @Published var availableFonts: [String] = []
 
     init() {
         loadSchema()
+        loadFonts()
     }
 
     func loadSchema() {
@@ -135,5 +138,14 @@ final class SchemaStore: ObservableObject {
             return candidate
         }
         return nil
+    }
+
+    private func loadFonts() {
+        DispatchQueue.global(qos: .userInitiated).async {
+            let fonts = NSFontManager.shared.availableFontFamilies.sorted()
+            DispatchQueue.main.async {
+                self.availableFonts = fonts
+            }
+        }
     }
 }

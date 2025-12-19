@@ -34,6 +34,9 @@ final class RimeConfigManager: ObservableObject {
     @Published private(set) var mergedConfigs: [ConfigDomain: [String: Any]] = [:]
     @Published private(set) var patchConfigs: [ConfigDomain: [String: Any]] = [:]
 
+    private var choicesCache: [String: [String]] = [:]
+    private var labelsCache: [String: String] = [:]
+
     private var saveTasks: [String: Task<Void, Never>] = [:]
     private let rimePath: URL
     private let fileManager = FileManager.default
@@ -64,6 +67,9 @@ final class RimeConfigManager: ObservableObject {
     }
 
     func loadConfig() {
+        choicesCache.removeAll()
+        labelsCache.removeAll()
+
         let hasDefaultFiles = fileExists(named: "default.yaml") || fileExists(named: "default.custom.yaml")
         let hasSquirrelFiles = fileExists(named: "squirrel.yaml") || fileExists(named: "squirrel.custom.yaml")
 
@@ -213,10 +219,16 @@ final class RimeConfigManager: ObservableObject {
         }
 
         if let ref = field.choicesRef {
+            if let cached = choicesCache[ref] {
+                return cached
+            }
+
             let domains: [ConfigDomain] = [.squirrel, .default]
             for domain in domains {
                 if let dict = value(for: ref, in: domain) as? [String: Any] {
-                    return dict.keys.sorted()
+                    let sortedKeys = dict.keys.sorted()
+                    choicesCache[ref] = sortedKeys
+                    return sortedKeys
                 }
             }
         }
@@ -226,6 +238,11 @@ final class RimeConfigManager: ObservableObject {
 
     /// Returns a user-friendly label for a choice ID.
     func choiceLabel(for field: SchemaField, choice: String) -> String {
+        let cacheKey = "\(field.id):\(choice)"
+        if let cached = labelsCache[cacheKey] {
+            return cached
+        }
+
         // Hardcoded labels for common Rime options (can be moved to Schema or Localization later)
         let commonLabels: [String: String] = [
             "ascii_punct": "英文标点",
@@ -236,6 +253,7 @@ final class RimeConfigManager: ObservableObject {
         ]
 
         if let label = commonLabels[choice] {
+            labelsCache[cacheKey] = label
             return label
         }
 
@@ -249,11 +267,13 @@ final class RimeConfigManager: ObservableObject {
                 if let dict = value(for: ref, in: domain) as? [String: Any],
                    let item = dict[choice] as? [String: Any],
                    let name = item["name"] as? String {
+                    labelsCache[cacheKey] = name
                     return name
                 }
             }
         }
 
+        labelsCache[cacheKey] = choice
         return choice
     }
 

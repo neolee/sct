@@ -17,7 +17,7 @@ struct SchemaDrivenView: View {
         Group {
             if let schema = schemaStore.schema {
                 let filteredSections = sectionIDs == nil ? schema.sections : schema.sections.filter { sectionIDs!.contains($0.id) }
-                SchemaSectionListView(sections: filteredSections, manager: manager)
+                SchemaSectionListView(sections: filteredSections, manager: manager, schemaStore: schemaStore)
             } else if let error = schemaStore.errorMessage {
                 ContentUnavailableView("无法加载 Schema",
                                        systemImage: "exclamationmark.triangle",
@@ -35,12 +35,13 @@ struct SchemaDrivenView: View {
 private struct SchemaSectionListView: View {
     let sections: [SchemaSection]
     @ObservedObject var manager: RimeConfigManager
+    @ObservedObject var schemaStore: SchemaStore
 
     var body: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 24) {
                 ForEach(sections) { section in
-                    SchemaSectionCard(section: section, manager: manager)
+                    SchemaSectionCard(section: section, manager: manager, schemaStore: schemaStore)
                 }
             }
             .padding(24)
@@ -51,6 +52,7 @@ private struct SchemaSectionListView: View {
 private struct SchemaSectionCard: View {
     let section: SchemaSection
     @ObservedObject var manager: RimeConfigManager
+    @ObservedObject var schemaStore: SchemaStore
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -69,7 +71,7 @@ private struct SchemaSectionCard: View {
 
             VStack(alignment: .leading, spacing: 16) {
                 ForEach(section.fields) { field in
-                    SchemaFieldRow(field: field, section: section, manager: manager)
+                    SchemaFieldRow(field: field, section: section, manager: manager, schemaStore: schemaStore)
                 }
             }
         }
@@ -82,6 +84,7 @@ struct SchemaFieldRow: View {
     let field: SchemaField
     let section: SchemaSection
     @ObservedObject var manager: RimeConfigManager
+    @ObservedObject var schemaStore: SchemaStore
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -170,13 +173,17 @@ struct SchemaFieldRow: View {
             }
 
         case .fontPicker:
-            let fonts = NSFontManager.shared.availableFontFamilies.sorted()
+            let fonts = schemaStore.availableFonts
             Picker("", selection: Binding(
                 get: { rawValue as? String ?? "Avenir" },
                 set: { manager.updateValue($0, for: field.keyPath, in: domain) }
             )) {
-                ForEach(fonts, id: \.self) { font in
-                    Text(font).tag(font)
+                if fonts.isEmpty {
+                    Text("正在加载字体...").tag("Avenir")
+                } else {
+                    ForEach(fonts, id: \.self) { font in
+                        Text(font).tag(font)
+                    }
                 }
             }
             .pickerStyle(.menu)
