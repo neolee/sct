@@ -121,42 +121,59 @@ private struct HotkeyMonitorView: NSViewRepresentable {
 
         private func translateKey(event: NSEvent) -> String {
             // Rime specific key names
-            switch event.keyCode {
-            case 50: return "grave"
-            case 36: return "Return"
-            case 48: return "Tab"
-            case 49: return "space"
-            case 51: return "BackSpace"
-            case 53: return "Escape"
-            case 123: return "Left"
-            case 124: return "Right"
-            case 125: return "Down"
-            case 126: return "Up"
-            case 116: return "Page_Up"
-            case 121: return "Page_Down"
-            case 115: return "Home"
-            case 119: return "End"
-            case 117: return "Delete"
-            case 122: return "F1"
-            case 120: return "F2"
-            case 99: return "F3"
-            case 118: return "F4"
-            case 96: return "F5"
-            case 97: return "F6"
-            case 98: return "F7"
-            case 100: return "F8"
-            case 101: return "F9"
-            case 109: return "F10"
-            case 103: return "F11"
-            case 111: return "F12"
-            default:
-                if let chars = event.charactersIgnoringModifiers, !chars.isEmpty {
-                    let char = chars.first!
-                    if char == "`" { return "grave" }
-                    return String(char)
-                }
-                return ""
+            let specialKeys: [UInt16: String] = [
+                50: "grave",
+                36: "Return",
+                48: "Tab",
+                49: "space",
+                51: "BackSpace",
+                53: "Escape",
+                123: "Left",
+                124: "Right",
+                125: "Down",
+                126: "Up",
+                116: "Page_Up",
+                121: "Page_Down",
+                115: "Home",
+                119: "End",
+                117: "Delete",
+                122: "F1",
+                120: "F2",
+                99: "F3",
+                118: "F4",
+                96: "F5",
+                97: "F6",
+                98: "F7",
+                100: "F8",
+                101: "F9",
+                109: "F10",
+                103: "F11",
+                111: "F12"
+            ]
+
+            if let special = specialKeys[event.keyCode] {
+                return special
             }
+
+            if let chars = event.charactersIgnoringModifiers, !chars.isEmpty {
+                let char = chars.first!
+                let charMap: [Character: String] = [
+                    "`": "grave",
+                    "-": "minus",
+                    "=": "equal",
+                    "[": "bracketleft",
+                    "]": "bracketright",
+                    "\\": "backslash",
+                    ";": "semicolon",
+                    "'": "apostrophe",
+                    ",": "comma",
+                    ".": "period",
+                    "/": "slash",
+                    " ": "space"
+                ]
+                return charMap[char] ?? String(char)
+            }
+            return ""
         }
     }
 }

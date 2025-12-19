@@ -105,7 +105,7 @@
       "fields": [
         {
           "id": "capsLockMode",
-          "label": "保持 CapsLock 原功能",
+          "label": "保持 Caps Lock 原功能",
           "type": "toggle",
           "keyPath": "ascii_composer/good_old_caps_lock"
         },
