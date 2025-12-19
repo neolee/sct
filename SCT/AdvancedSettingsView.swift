@@ -1,4 +1,5 @@
 import SwiftUI
+import Yams
 
 struct AdvancedSettingsView: View {
     @ObservedObject var manager: RimeConfigManager
@@ -162,6 +163,14 @@ struct AdvancedRowView: View {
         if let double = value as? Double { return String(double) }
         if let decimal = value as? Decimal { return NSDecimalNumber(decimal: decimal).stringValue }
         if let string = value as? String { return string }
+
+        // For complex types (Array/Dictionary), use JSON to keep it on a single line for the TextField.
+        // This is valid YAML and will be parsed back into an object by parseValue.
+        if let data = try? JSONSerialization.data(withJSONObject: value, options: [.sortedKeys]),
+           let json = String(data: data, encoding: .utf8) {
+            return json
+        }
+
         return SchemaValueFormatter.string(from: value)
     }
 
@@ -171,6 +180,15 @@ struct AdvancedRowView: View {
         if trimmed.lowercased() == "false" { return false }
         if let i = Int(trimmed) { return i }
         if let d = Double(trimmed) { return d }
+
+        // Try parsing as YAML for complex types (arrays or dictionaries)
+        // We check if it looks like a YAML object/array or if it's a multi-line string
+        if trimmed.hasPrefix("{") || trimmed.hasPrefix("[") || trimmed.hasPrefix("-") || trimmed.contains("\n") {
+            if let obj = try? Yams.load(yaml: trimmed) {
+                return obj
+            }
+        }
+
         return string
     }
 }

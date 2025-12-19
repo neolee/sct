@@ -484,7 +484,7 @@ final class RimeConfigManager: ObservableObject {
         root["patch"] = patch
 
         do {
-            let yaml = try Yams.dump(object: root, width: -1, allowUnicode: true)
+            let yaml = try Yams.dump(object: root, width: -1, allowUnicode: true, sortKeys: true)
             try yaml.write(to: url, atomically: true, encoding: .utf8)
             statusMessage = "已更新 \(fileName)"
         } catch {
@@ -596,9 +596,9 @@ final class RimeConfigManager: ObservableObject {
         root["patch"] = patch
 
         do {
-            // width: -1 prevents unnecessary line breaks in long strings
+            // sortKeys: true ensures consistent output order
             // allowUnicode: true ensures Chinese characters are not escaped
-            let yaml = try Yams.dump(object: root, width: -1, allowUnicode: true)
+            let yaml = try Yams.dump(object: root, width: -1, allowUnicode: true, sortKeys: true)
             try yaml.write(to: url, atomically: true, encoding: String.Encoding.utf8)
             statusMessage = "已保存到 \(fileName)"
         } catch {
