@@ -81,12 +81,12 @@ final class RimeConfigManager: ObservableObject {
         let defaultBase = loadYamlDictionary(named: "default.yaml")
         let defaultPatch = loadPatchDictionary(named: "default.custom.yaml")
         patchConfigs[.default] = defaultPatch
-        mergedConfigs[.default] = mergedDictionary(base: defaultBase, patch: defaultPatch)
+        mergedConfigs[.default] = mergedDictionary(base: defaultBase, patch: normalizeRimeDictionary(defaultPatch))
 
         let squirrelBase = loadYamlDictionary(named: "squirrel.yaml")
         let squirrelPatch = loadPatchDictionary(named: "squirrel.custom.yaml")
         patchConfigs[.squirrel] = squirrelPatch
-        mergedConfigs[.squirrel] = mergedDictionary(base: squirrelBase, patch: squirrelPatch)
+        mergedConfigs[.squirrel] = mergedDictionary(base: squirrelBase, patch: normalizeRimeDictionary(squirrelPatch))
 
         parseAvailableSchemas()
         applyMergedValues()
@@ -247,6 +247,11 @@ final class RimeConfigManager: ObservableObject {
 
         guard let dictionary = mergedConfigs[domain] else { return nil }
         return value(in: dictionary, keyPath: keyPath)
+    }
+
+    func isCustomized(_ keyPath: String, in domain: ConfigDomain) -> Bool {
+        guard let patch = patchConfigs[domain] else { return false }
+        return patch[keyPath] != nil
     }
 
     private func getVirtualHotkeyPairs(prevAction: String, nextAction: String, in domain: ConfigDomain) -> [[String]] {
@@ -457,11 +462,11 @@ final class RimeConfigManager: ObservableObject {
         patch.removeValue(forKey: keyPath)
         patchConfigs[domain] = patch
 
-        // 2. Reload everything to get back to base values
-        loadConfig()
-
-        // 3. Save the updated patch file
+        // 2. Save the updated patch file
         saveFullPatch(in: domain)
+
+        // 3. Reload everything to get back to base values
+        loadConfig()
     }
 
     private func saveFullPatch(in domain: ConfigDomain) {
@@ -469,10 +474,21 @@ final class RimeConfigManager: ObservableObject {
         let fileName = "\(domain.rawValue).custom.yaml"
         let url = rimePath.appendingPathComponent(fileName)
 
-        let root: [String: Any] = ["patch": patch]
-        if let yaml = try? Yams.dump(object: root, allowUnicode: true) {
-            try? yaml.write(to: url, atomically: true, encoding: .utf8)
+        var root: [String: Any] = [:]
+        if fileManager.fileExists(atPath: url.path),
+           let contents = try? String(contentsOf: url, encoding: .utf8),
+           let existingRoot = try? Yams.load(yaml: contents) as? [String: Any] {
+            root = existingRoot
+        }
+
+        root["patch"] = patch
+
+        do {
+            let yaml = try Yams.dump(object: root, width: -1, allowUnicode: true)
+            try yaml.write(to: url, atomically: true, encoding: .utf8)
             statusMessage = "已更新 \(fileName)"
+        } catch {
+            statusMessage = "保存失败：\(error.localizedDescription)"
         }
     }
 
@@ -590,6 +606,20 @@ final class RimeConfigManager: ObservableObject {
         }
     }
 
+    private func flattenDictionary(_ dict: [String: Any], prefix: String = "") -> [String: Any] {
+        var flat: [String: Any] = [:]
+        for (key, value) in dict {
+            let fullKey = prefix.isEmpty ? key : "\(prefix)/\(key)"
+            if let subDict = value as? [String: Any] {
+                let subFlat = flattenDictionary(subDict, prefix: fullKey)
+                flat.merge(subFlat) { (_, new) in new }
+            } else {
+                flat[fullKey] = value
+            }
+        }
+        return flat
+    }
+
     private func loadPatchDictionary(named fileName: String) -> [String: Any] {
         let url = rimePath.appendingPathComponent(fileName)
           guard fileManager.fileExists(atPath: url.path),
@@ -598,7 +628,7 @@ final class RimeConfigManager: ObservableObject {
               let patch = root["patch"] as? [String: Any] else {
             return [:]
         }
-          return normalizeRimeDictionary(patch)
+          return flattenDictionary(patch)
     }
 
     private func loadYamlDictionary(named fileName: String) -> [String: Any] {

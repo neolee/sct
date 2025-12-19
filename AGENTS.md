@@ -77,6 +77,34 @@ After saving changes, Squirrel needs to "Deploy" to apply them.
 7. Sandbox Strategy: keep App Sandbox disabled during development to access real `~/Library/Rime`; re-enable it before release and request that directory via security-scoped bookmarks.
 8. Navigation Layout: the macOS UI keeps the `NavigationSplitView` structure from `ContentView.swift`, mapping each group above to a dedicated sidebar item; `SchemaDrivenView` is only a prototype surface, not the final container for every feature.
 
+## Advanced YAML Editor Design
+The "Advanced Settings" tab is designed as a **Smart Configuration Browser** to bridge the gap between GUI and raw YAML editing.
+
+### 1. Merged View with Source Attribution
+- Displays the final effective configuration tree.
+- **Visual Distinction**: Base values (from `default.yaml`) are shown in a neutral style, while patched values (from `.custom.yaml`) are highlighted (e.g., blue text or background).
+- **Source Labels**: Each entry indicates whether it's a "Default" or "Customized" value.
+
+### 2. Interaction Model
+- **Search & Filter**: Global search by key path or value. A "Modified Only" toggle to quickly audit user changes.
+- **One-Click Customization**: For any default value, a "Customize" button adds it to the patch dictionary and opens it for editing.
+- **One-Click Reset**: For any customized value, a "Reset" button removes it from the patch, reverting to the base value.
+
+### 3. Editor Types
+- **Type-Aware UI**: Automatically provides appropriate controls (Toggle for Bool, Stepper for Int, TextField for String).
+- **Source Fallback**: For complex types (nested objects or arrays), provides a mini YAML source editor.
+- **Full Source Mode**: A dedicated sub-tab for direct editing of the `.custom.yaml` file with syntax validation.
+
+### 4. Advanced Settings Refinement (2025-12-19)
+- **Duplicate Entry Fix**: Resolved an issue where customized keys appeared twice by ensuring the patch dictionary is normalized (nested) before merging into the base configuration.
+- **Unified Text Editor**: Replaced type-specific controls (Toggle, Stepper, etc.) with a consistent `TextField` for all values in the Advanced view. This provides a more "pro" feel and avoids UI clutter.
+- **Smart Parsing**: Implemented a `parseValue` helper to automatically convert text input back to `Bool`, `Int`, or `Double` where appropriate, maintaining YAML type integrity.
+- **Reset Logic Fix**: Corrected the order of operations in `removePatch` to ensure changes are saved to disk before reloading the configuration, fixing the issue where the reset button had no effect.
+- **UX Polish**:
+    - Fixed label wrapping in the header.
+    - Enabled full-row click to focus the editor.
+    - Implemented "Select All" on focus for faster editing.
+
 ## Plan and Progress
 - [x] Initial project scaffolding (2025-12-18).
 - [x] Basic `RimeConfigManager` structure for YAML handling (2025-12-18).
@@ -84,14 +112,14 @@ After saving changes, Squirrel needs to "Deploy" to apply them.
 - [x] Integration with `Yams` library (2025-12-18).
 - [x] Robust patch merging implementation (2025-12-18).
 - [x] BGR <-> RGB color conversion utility (2025-12-18).
+- [x] Schema-driven UI generation to support future Rime features without code changes.
 - [x] Schema expansion: update ConfigSchema.json per the grouping decisions and expose values via RimeConfigManager (2025-12-18).
 - [x] Navigation UI: wire each configuration group to its own NavigationSplitView destination; keep SchemaDrivenView as a prototype surface (2025-12-18).
 - [x] Key binder view: build UI for common bindings (commit-first/last, prev/next, paging) and persist changes (2025-12-19).
 - [x] App options table: support add/remove rows with ascii_mode/inline/no_inline/vim_mode toggles plus validation and sorting (2025-12-19).
 - [x] App selection: allow users to select apps from /Applications to get Bundle ID (2025-12-19).
 - [x] UI Polish: rename "App Options" to "应用程序" and "Bundle ID" to "应用程序 ID" (2025-12-19).
-- [ ] YAML editor prototype: merged + diff views, search/filter, and an Enable Customization switch per entry.
-- [ ] Advanced "Source Code" mode for direct YAML editing.
-- [ ] Schema-driven UI generation to support future Rime features without code changes.
-- [ ] Cloud sync/backup of `.custom.yaml` files.
+- [x] YAML editor prototype: merged + diff views, search/filter, and an Enable Customization switch per entry.
+- [x] Advanced "Source Code" mode for direct YAML editing.
 - [ ] Sandbox reactivation: re-enable App Sandbox, request `~/Library/Rime` access, persist the bookmark, retest reload/deploy.
+- [ ] Cloud sync/backup of `.custom.yaml` files.
