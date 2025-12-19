@@ -38,6 +38,16 @@ enum SidebarItem: String, CaseIterable, Identifiable {
         case .prototype: return "testtube.2"
         }
     }
+
+    var sectionIDs: [String]? {
+        switch self {
+        case .schemes: return ["schemes.list", "switcher"]
+        case .panel: return ["panel.menu", "style"]
+        case .behaviors: return ["asciiComposer", "keyBinder"]
+        case .apps: return ["appOptions"]
+        case .advanced, .prototype: return nil
+        }
+    }
 }
 
 struct ContentView: View {
@@ -77,18 +87,13 @@ struct ContentView: View {
     @ViewBuilder
     private func detailView(for item: SidebarItem) -> some View {
         switch item {
-        case .schemes:
-            SchemaDrivenView(schemaStore: schemaStore, manager: manager, sectionIDs: ["schemes.list", "switcher"], title: item.title)
-        case .panel:
-            SchemaDrivenView(schemaStore: schemaStore, manager: manager, sectionIDs: ["panel.menu", "style"], title: item.title)
-        case .behaviors:
-            SchemaDrivenView(schemaStore: schemaStore, manager: manager, sectionIDs: ["asciiComposer", "keyBinder"], title: item.title)
-        case .apps:
-            SchemaDrivenView(schemaStore: schemaStore, manager: manager, sectionIDs: ["appOptions"], title: item.title)
         case .advanced:
             AdvancedSettingsView(manager: manager)
-        case .prototype:
-            SchemaDrivenView(schemaStore: schemaStore, manager: manager)
+        default:
+            SchemaDrivenView(schemaStore: schemaStore,
+                             manager: manager,
+                             sectionIDs: item.sectionIDs,
+                             title: item.title)
         }
     }
 }

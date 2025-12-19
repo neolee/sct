@@ -176,6 +176,24 @@ final class RimeConfigManager: ObservableObject {
         return value(in: dictionary, keyPath: keyPath)
     }
 
+    func allKeys(in domain: ConfigDomain) -> [String] {
+        guard let dictionary = mergedConfigs[domain] else { return [] }
+        return getAllKeys(from: dictionary)
+    }
+
+    private func getAllKeys(from dict: [String: Any], prefix: String = "") -> [String] {
+        var keys: [String] = []
+        for (key, value) in dict {
+            let fullKey = prefix.isEmpty ? key : "\(prefix)/\(key)"
+            if let subDict = value as? [String: Any] {
+                keys.append(contentsOf: getAllKeys(from: subDict, prefix: fullKey))
+            } else {
+                keys.append(fullKey)
+            }
+        }
+        return keys
+    }
+
     func mergedConfig(for domain: ConfigDomain) -> [String: Any] {
         return mergedConfigs[domain] ?? [:]
     }

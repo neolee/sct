@@ -33,9 +33,8 @@ struct AdvancedSettingsView: View {
 
             // Key-Value List
             List {
-                let merged = manager.mergedConfigs[selectedDomain] ?? [:]
                 let patch = manager.patchConfigs[selectedDomain] ?? [:]
-                let allKeys = getAllKeys(from: merged).sorted()
+                let allKeys = manager.allKeys(in: selectedDomain).sorted()
 
                 let filteredKeys = allKeys.filter { key in
                     let matchesSearch = searchText.isEmpty || key.localizedCaseInsensitiveContains(searchText)
@@ -45,7 +44,7 @@ struct AdvancedSettingsView: View {
 
                 ForEach(filteredKeys, id: \.self) { key in
                     let isCustomized = patch[key] != nil
-                    let value = getValue(for: key, from: merged)
+                    let value = manager.value(for: key, in: selectedDomain)
 
                     HStack(alignment: .top) {
                         VStack(alignment: .leading, spacing: 4) {
@@ -91,32 +90,6 @@ struct AdvancedSettingsView: View {
         .sheet(isPresented: $showSourceEditor) {
             SourceCodeEditorView(domain: selectedDomain, manager: manager)
         }
-    }
-
-    private func getAllKeys(from dict: [String: Any], prefix: String = "") -> [String] {
-        var keys: [String] = []
-        for (key, value) in dict {
-            let fullKey = prefix.isEmpty ? key : "\(prefix)/\(key)"
-            if let subDict = value as? [String: Any] {
-                keys.append(contentsOf: getAllKeys(from: subDict, prefix: fullKey))
-            } else {
-                keys.append(fullKey)
-            }
-        }
-        return keys
-    }
-
-    private func getValue(for keyPath: String, from dict: [String: Any]) -> Any? {
-        let components = keyPath.split(separator: "/")
-        var current: Any? = dict
-        for component in components {
-            if let d = current as? [String: Any] {
-                current = d[String(component)]
-            } else {
-                return nil
-            }
-        }
-        return current
     }
 }
 
