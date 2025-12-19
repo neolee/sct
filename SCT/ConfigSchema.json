@@ -99,19 +99,19 @@
     },
     {
       "id": "asciiComposer",
-      "title": "中西文切换",
+      "title": "中英切换",
       "icon": "textformat.abc",
       "targetFile": "default",
       "fields": [
         {
           "id": "capsLockMode",
-          "label": "CapsLock 模式",
+          "label": "保持 CapsLock 原功能",
           "type": "toggle",
           "keyPath": "ascii_composer/good_old_caps_lock"
         },
         {
           "id": "switchKeyMap",
-          "label": "切换按键",
+          "label": "切换按键设置",
           "type": "keyMapping",
           "keyPath": "ascii_composer/switch_key",
           "choices": [
@@ -179,22 +179,25 @@
       "targetFile": "default",
       "fields": [
         {
-          "id": "selectFirst",
-          "label": "以词定字 (首字)",
-          "type": "keyPicker",
-          "keyPath": "key_binder/select_first_character"
+          "id": "selectPair",
+          "label": "以词定字",
+          "type": "hotkeyPairList",
+          "keyPath": "key_binder/select_pair",
+          "pairLabels": ["首字", "末字"]
         },
         {
-          "id": "selectLast",
-          "label": "以词定字 (末字)",
-          "type": "keyPicker",
-          "keyPath": "key_binder/select_last_character"
+          "id": "cursorPair",
+          "label": "移动光标",
+          "type": "hotkeyPairList",
+          "keyPath": "key_binder/cursor_pair",
+          "pairLabels": ["上个拼音", "下个拼音"]
         },
         {
-          "id": "bindings",
-          "label": "按键映射",
-          "type": "bindingTable",
-          "keyPath": "key_binder/bindings"
+          "id": "pagePair",
+          "label": "翻页",
+          "type": "hotkeyPairList",
+          "keyPath": "key_binder/page_pair",
+          "pairLabels": ["上页", "下页"]
         }
       ]
     },

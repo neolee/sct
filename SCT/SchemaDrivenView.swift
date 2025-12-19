@@ -208,6 +208,9 @@ struct SchemaFieldRow: View {
         case .hotkeyList:
             HotkeyListControl(field: field, domain: domain, manager: manager)
 
+        case .hotkeyPairList:
+            HotkeyPairListControl(field: field, domain: domain, manager: manager)
+
         default:
             Text(SchemaValueFormatter.string(from: rawValue ?? "—"))
                 .font(.callout)
@@ -586,7 +589,7 @@ struct KeyMappingControl: View {
                         }
                     )) {
                         ForEach(choices, id: \.self) { choice in
-                            Text(choice).tag(choice)
+                            Text(manager.choiceLabel(for: field, choice: choice)).tag(choice)
                         }
                     }
                     .pickerStyle(.menu)
@@ -665,6 +668,113 @@ struct HotkeyListControl: View {
             }
         }
         .frame(maxWidth: 300)
+    }
+}
+
+struct HotkeyPairListControl: View {
+    let field: SchemaField
+    let domain: RimeConfigManager.ConfigDomain
+    @ObservedObject var manager: RimeConfigManager
+
+    @State private var newHotkey1: String = ""
+    @State private var newHotkey2: String = ""
+    @State private var isAdding = false
+
+    var body: some View {
+        let pairs = (manager.value(for: field.keyPath, in: domain) as? [[String]]) ?? []
+        let labels = field.pairLabels ?? ["Key 1", "Key 2"]
+
+        VStack(alignment: .leading, spacing: 8) {
+            ForEach(0..<pairs.count, id: \.self) { index in
+                let pair = pairs[index]
+                HStack(spacing: 12) {
+                    HStack(spacing: 4) {
+                        Text(labels[0])
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        Text(pair[0])
+                            .font(.system(.body, design: .monospaced))
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(Color.accentColor.opacity(0.1))
+                            .cornerRadius(4)
+                    }
+
+                    Image(systemName: "arrow.left.and.right")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+
+                    HStack(spacing: 4) {
+                        Text(labels[1])
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        Text(pair[1])
+                            .font(.system(.body, design: .monospaced))
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(Color.accentColor.opacity(0.1))
+                            .cornerRadius(4)
+                    }
+
+                    Spacer()
+
+                    Button(role: .destructive) {
+                        var currentPairs = pairs
+                        currentPairs.remove(at: index)
+                        manager.updateValue(currentPairs, for: field.keyPath, in: domain)
+                    } label: {
+                        Image(systemName: "trash")
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(.red)
+                }
+            }
+
+            if isAdding {
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack(spacing: 16) {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(labels[0]).font(.caption).foregroundStyle(.secondary)
+                            HotkeyRecorder(hotkey: $newHotkey1)
+                        }
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(labels[1]).font(.caption).foregroundStyle(.secondary)
+                            HotkeyRecorder(hotkey: $newHotkey2)
+                        }
+                    }
+
+                    HStack {
+                        Button("添加") {
+                            guard !newHotkey1.isEmpty && !newHotkey2.isEmpty else { return }
+                            var currentPairs = pairs
+                            currentPairs.append([newHotkey1, newHotkey2])
+                            manager.updateValue(currentPairs, for: field.keyPath, in: domain)
+                            newHotkey1 = ""
+                            newHotkey2 = ""
+                            isAdding = false
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .disabled(newHotkey1.isEmpty || newHotkey2.isEmpty)
+
+                        Button("取消") {
+                            isAdding = false
+                            newHotkey1 = ""
+                            newHotkey2 = ""
+                        }
+                        .buttonStyle(.bordered)
+                    }
+                }
+                .padding(12)
+                .background(Color.gray.opacity(0.05))
+                .cornerRadius(8)
+            } else {
+                Button(action: { isAdding = true }) {
+                    Label("添加快捷键", systemImage: "plus.circle")
+                }
+                .buttonStyle(.link)
+            }
+        }
+        .frame(maxWidth: 450)
     }
 }
 

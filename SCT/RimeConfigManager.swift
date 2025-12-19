@@ -230,8 +230,53 @@ final class RimeConfigManager: ObservableObject {
     }
 
     func value(for keyPath: String, in domain: ConfigDomain) -> Any? {
+        // Handle virtual keypaths for key_binder
+        if keyPath.hasPrefix("key_binder/") {
+            let virtualKey = keyPath.replacingOccurrences(of: "key_binder/", with: "")
+            switch virtualKey {
+            case "select_pair":
+                let first = value(in: mergedConfigs[domain] ?? [:], keyPath: "key_binder/select_first_character") as? String ?? ""
+                let last = value(in: mergedConfigs[domain] ?? [:], keyPath: "key_binder/select_last_character") as? String ?? ""
+                return (first.isEmpty && last.isEmpty) ? [] : [[first, last]]
+            case "cursor_pair":
+                return getVirtualHotkeyPairs(prevAction: "cursor_prev", nextAction: "cursor_next", in: domain)
+            case "page_pair":
+                return getVirtualHotkeyPairs(prevAction: "page_up", nextAction: "page_down", in: domain)
+            default: break
+            }
+        }
+
         guard let dictionary = mergedConfigs[domain] else { return nil }
         return value(in: dictionary, keyPath: keyPath)
+    }
+
+    private func getVirtualHotkeyPairs(prevAction: String, nextAction: String, in domain: ConfigDomain) -> [[String]] {
+        let prevs = getVirtualHotkeys(for: prevAction, in: domain)
+        let nexts = getVirtualHotkeys(for: nextAction, in: domain)
+
+        var pairs: [[String]] = []
+        let count = min(prevs.count, nexts.count)
+        for i in 0..<count {
+            pairs.append([prevs[i], nexts[i]])
+        }
+        return pairs
+    }
+
+    private func getVirtualHotkeys(for action: String, in domain: ConfigDomain) -> [String] {
+        let bindings = value(for: "key_binder/bindings", in: domain) as? [[String: Any]] ?? []
+        let targetSend: String
+        let targetWhen: String
+
+        switch action {
+        case "cursor_prev": (targetSend, targetWhen) = ("Shift+Left", "composing")
+        case "cursor_next": (targetSend, targetWhen) = ("Shift+Right", "composing")
+        case "page_up": (targetSend, targetWhen) = ("Page_Up", "has_menu")
+        case "page_down": (targetSend, targetWhen) = ("Page_Down", "has_menu")
+        default: return []
+        }
+
+        return bindings.filter { ($0["send"] as? String) == targetSend && ($0["when"] as? String) == targetWhen }
+            .compactMap { $0["accept"] as? String }
     }
 
     func allKeys(in domain: ConfigDomain) -> [String] {
@@ -301,7 +346,17 @@ final class RimeConfigManager: ObservableObject {
             "traditionalization": "简繁体",
             "emoji": "Emoji",
             "full_shape": "全角半角",
-            "search_single_char": "单字模式"
+            "search_single_char": "单字模式",
+            "noop": "无操作",
+            "clear": "清除输入",
+            "commit_code": "提交编码",
+            "commit_text": "提交文字",
+            "inline_ascii": "行内英文",
+            "Caps_Lock": "CapsLock",
+            "Shift_L": "左 Shift",
+            "Shift_R": "右 Shift",
+            "Control_L": "左 Control",
+            "Control_R": "右 Control"
         ]
 
         if let label = commonLabels[choice] {
@@ -331,6 +386,30 @@ final class RimeConfigManager: ObservableObject {
 
     func updateValue(_ value: Any, for keyPath: String, in domain: ConfigDomain) {
         var finalValue = value
+
+        // Handle virtual keypaths for key_binder
+        if keyPath.hasPrefix("key_binder/") {
+            let virtualKey = keyPath.replacingOccurrences(of: "key_binder/", with: "")
+            switch virtualKey {
+            case "select_pair":
+                let pairs = value as? [[String]] ?? []
+                if let firstPair = pairs.first, firstPair.count == 2 {
+                    updateValue(firstPair[0], for: "key_binder/select_first_character", in: domain)
+                    updateValue(firstPair[1], for: "key_binder/select_last_character", in: domain)
+                } else {
+                    updateValue("", for: "key_binder/select_first_character", in: domain)
+                    updateValue("", for: "key_binder/select_last_character", in: domain)
+                }
+                return
+            case "cursor_pair":
+                updateVirtualHotkeyPairs(value as? [[String]] ?? [], prevAction: "cursor_prev", nextAction: "cursor_next", in: domain)
+                return
+            case "page_pair":
+                updateVirtualHotkeyPairs(value as? [[String]] ?? [], prevAction: "page_up", nextAction: "page_down", in: domain)
+                return
+            default: break
+            }
+        }
 
         // Handle Double to ensure clean YAML output without scientific notation
         if let doubleValue = value as? Double {
@@ -411,6 +490,67 @@ final class RimeConfigManager: ObservableObject {
         loadConfig() // Reload to sync UI
         statusMessage = "已保存 \(fileName)"
     }
+    private func updateVirtualHotkeyPairs(_ pairs: [[String]], prevAction: String, nextAction: String, in domain: ConfigDomain) {
+        let prevHotkeys = pairs.map { $0[0] }
+        let nextHotkeys = pairs.map { $0[1] }
+
+        // We need to update both actions in the bindings
+        var bindings = value(for: "key_binder/bindings", in: domain) as? [[String: Any]] ?? []
+
+        let (prevSend, prevWhen) = getActionDetails(for: prevAction)
+        let (nextSend, nextWhen) = getActionDetails(for: nextAction)
+
+        // 1. Remove existing bindings for both actions
+        bindings.removeAll {
+            (($0["send"] as? String) == prevSend && ($0["when"] as? String) == prevWhen) ||
+            (($0["send"] as? String) == nextSend && ($0["when"] as? String) == nextWhen)
+        }
+
+        // 2. Add new bindings in pairs
+        for i in 0..<pairs.count {
+            bindings.append(["when": prevWhen, "accept": prevHotkeys[i], "send": prevSend])
+            bindings.append(["when": nextWhen, "accept": nextHotkeys[i], "send": nextSend])
+        }
+
+        // 3. Update the real keyPath
+        updateValue(bindings, for: "key_binder/bindings", in: domain)
+    }
+
+    private func getActionDetails(for action: String) -> (send: String, when: String) {
+        switch action {
+        case "cursor_prev": return ("Shift+Left", "composing")
+        case "cursor_next": return ("Shift+Right", "composing")
+        case "page_up": return ("Page_Up", "has_menu")
+        case "page_down": return ("Page_Down", "has_menu")
+        default: return ("", "")
+        }
+    }
+
+    private func updateVirtualHotkeys(_ hotkeys: [String], for action: String, in domain: ConfigDomain) {
+        var bindings = value(for: "key_binder/bindings", in: domain) as? [[String: Any]] ?? []
+        let targetSend: String
+        let targetWhen: String
+
+        switch action {
+        case "cursor_prev": (targetSend, targetWhen) = ("Shift+Left", "composing")
+        case "cursor_next": (targetSend, targetWhen) = ("Shift+Right", "composing")
+        case "page_up": (targetSend, targetWhen) = ("Page_Up", "has_menu")
+        case "page_down": (targetSend, targetWhen) = ("Page_Down", "has_menu")
+        default: return
+        }
+
+        // 1. Remove existing bindings for this action
+        bindings.removeAll { ($0["send"] as? String) == targetSend && ($0["when"] as? String) == targetWhen }
+
+        // 2. Add new bindings
+        for hotkey in hotkeys {
+            bindings.append(["when": targetWhen, "accept": hotkey, "send": targetSend])
+        }
+
+        // 3. Update the real keyPath
+        updateValue(bindings, for: "key_binder/bindings", in: domain)
+    }
+
     private func updateInMemoryValue(_ value: Any, for components: ArraySlice<String>, in dictionary: inout [String: Any]) {
         guard let head = components.first else { return }
         if components.count == 1 {

@@ -42,6 +42,7 @@ struct SchemaField: Decodable, Identifiable, Hashable {
     let optional: Bool?
     let columns: [SchemaTableColumn]?
     let keys: [String]?
+    let pairLabels: [String]?
     let itemSchema: String?
 }
 
@@ -90,6 +91,7 @@ enum SchemaFieldType: String, Decodable {
     case table
     case collection
     case keyMapping
+    case hotkeyPairList
     case colorBGR
     case appOptions
     case keyBinder
