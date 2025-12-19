@@ -122,4 +122,6 @@ The "Advanced Settings" tab is designed as a **Smart Configuration Browser** to 
 - [x] YAML editor prototype: merged + diff views, search/filter, and an Enable Customization switch per entry.
 - [x] Advanced "Source Code" mode for direct YAML editing.
 - [ ] Sandbox reactivation: re-enable App Sandbox, request `~/Library/Rime` access, persist the bookmark, retest reload/deploy.
-- [ ] Cloud sync/backup of `.custom.yaml` files.
+- [ ] Backup/cloud sync of `.custom.yaml` files.
+- [ ] Auto update mechanism for SCT itself. Also consider integrating with Homebrew Cask and/or GitHub Actions for easier distribution.
+- [ ] Documentation and user friendly help within the app (README.md, in-app tips for specific configurations and features, etc.).
