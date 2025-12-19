@@ -13,7 +13,6 @@ enum SidebarItem: String, CaseIterable, Identifiable {
     case behaviors
     case apps
     case advanced
-    case prototype
 
     var id: String { rawValue }
 
@@ -24,7 +23,6 @@ enum SidebarItem: String, CaseIterable, Identifiable {
         case .behaviors: return "输入行为"
         case .apps: return "应用程序"
         case .advanced: return "高级设置"
-        case .prototype: return "Schema 驱动预览"
         }
     }
 
@@ -35,7 +33,6 @@ enum SidebarItem: String, CaseIterable, Identifiable {
         case .behaviors: return "keyboard"
         case .apps: return "apps.ipad"
         case .advanced: return "gearshape.2"
-        case .prototype: return "testtube.2"
         }
     }
 
@@ -45,7 +42,7 @@ enum SidebarItem: String, CaseIterable, Identifiable {
         case .panel: return ["panel.menu", "style"]
         case .behaviors: return ["asciiComposer", "keyBinder"]
         case .apps: return ["appOptions"]
-        case .advanced, .prototype: return nil
+        case .advanced: return nil
         }
     }
 }
