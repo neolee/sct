@@ -1,4 +1,5 @@
 import SwiftUI
+import UniformTypeIdentifiers
 
 struct SchemaDrivenView: View {
     @ObservedObject var schemaStore: SchemaStore
@@ -88,12 +89,18 @@ struct SchemaFieldRow: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            HStack(alignment: .top) {
+            if field.type == .appOptions || field.type == .keyBinder || field.type == .hotkeyList || field.type == .hotkeyPairList {
                 Text(field.label)
                     .fontWeight(.semibold)
-                    .padding(.top, 4)
-                Spacer()
                 controlView
+            } else {
+                HStack(alignment: .top) {
+                    Text(field.label)
+                        .fontWeight(.semibold)
+                        .padding(.top, 4)
+                    Spacer()
+                    controlView
+                }
             }
         }
     }
@@ -431,12 +438,18 @@ struct AppOptionsControl: View {
         VStack(alignment: .leading, spacing: 12) {
             // Header
             HStack {
-                Text("Bundle ID").frame(width: 150, alignment: .leading)
-                Text("ASCII").frame(width: 50)
-                Text("Inline").frame(width: 50)
-                Text("NoInline").frame(width: 60)
-                Text("Vim").frame(width: 40)
-                Spacer()
+                Text("应用程序 ID")
+                    .frame(maxWidth: .infinity, alignment: .leading)
+
+                Group {
+                    Text("默认英文").frame(width: 70)
+                    Text("临时内嵌").frame(width: 70)
+                    Text("禁用内嵌").frame(width: 70)
+                    Text("Vim 模式").frame(width: 70)
+                }
+                .multilineTextAlignment(.center)
+
+                Spacer().frame(width: 40) // Space for trash button
             }
             .font(.caption.bold())
             .foregroundStyle(.secondary)
@@ -444,15 +457,17 @@ struct AppOptionsControl: View {
             ForEach(sortedKeys, id: \.self) { bundleID in
                 HStack {
                     Text(bundleID)
-                        .frame(width: 150, alignment: .leading)
                         .font(.system(.body, design: .monospaced))
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                        .frame(maxWidth: .infinity, alignment: .leading)
 
-                    flagToggle(bundleID: bundleID, flag: "ascii_mode").frame(width: 50)
-                    flagToggle(bundleID: bundleID, flag: "inline").frame(width: 50)
-                    flagToggle(bundleID: bundleID, flag: "no_inline").frame(width: 60)
-                    flagToggle(bundleID: bundleID, flag: "vim_mode").frame(width: 40)
-
-                    Spacer()
+                    Group {
+                        flagToggle(bundleID: bundleID, flag: "ascii_mode").frame(width: 70)
+                        flagToggle(bundleID: bundleID, flag: "inline").frame(width: 70)
+                        flagToggle(bundleID: bundleID, flag: "no_inline").frame(width: 70)
+                        flagToggle(bundleID: bundleID, flag: "vim_mode").frame(width: 70)
+                    }
 
                     Button(role: .destructive) {
                         var currentOptions = options
@@ -463,31 +478,59 @@ struct AppOptionsControl: View {
                     }
                     .buttonStyle(.plain)
                     .foregroundStyle(.red)
+                    .frame(width: 40)
                 }
             }
 
             Divider()
 
             HStack {
-                TextField("添加 Bundle ID (如 com.apple.Terminal)", text: $newBundleID)
+                TextField("输入或选择应用程序 ID", text: $newBundleID)
                     .textFieldStyle(.roundedBorder)
+                    .onSubmit { addBundleID() }
+
+                Button {
+                    selectApp()
+                } label: {
+                    Label("选择应用...", systemImage: "app.badge")
+                }
 
                 Button("添加") {
-                    guard !newBundleID.isEmpty else { return }
-                    var currentOptions = options
-                    if currentOptions[newBundleID] == nil {
-                        currentOptions[newBundleID] = [:]
-                        manager.updateValue(currentOptions, for: field.keyPath, in: domain)
-                    }
-                    newBundleID = ""
+                    addBundleID()
                 }
-                .disabled(newBundleID.isEmpty)
+                .buttonStyle(.borderedProminent)
+                .disabled(newBundleID.isEmpty || options[newBundleID] != nil)
             }
         }
         .padding(8)
         .background(Color(NSColor.controlBackgroundColor))
         .cornerRadius(8)
         .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.secondary.opacity(0.2)))
+    }
+
+    private func selectApp() {
+        let panel = NSOpenPanel()
+        panel.allowsMultipleSelection = false
+        panel.canChooseDirectories = false
+        panel.canChooseFiles = true
+        panel.allowedContentTypes = [.application]
+        panel.directoryURL = URL(fileURLWithPath: "/Applications")
+
+        if panel.runModal() == .OK, let url = panel.url {
+            if let bundle = Bundle(url: url), let bundleID = bundle.bundleIdentifier {
+                newBundleID = bundleID
+            }
+        }
+    }
+
+    private func addBundleID() {
+        let options = (manager.value(for: field.keyPath, in: domain) as? [String: [String: Any]]) ?? [:]
+        guard !newBundleID.isEmpty, options[newBundleID] == nil else { return }
+
+        var currentOptions = options
+        currentOptions[newBundleID] = [:]
+        manager.updateValue(currentOptions, for: field.keyPath, in: domain)
+        newBundleID = ""
     }
 
     @ViewBuilder
@@ -577,7 +620,7 @@ struct KeyMappingControl: View {
         VStack(alignment: .leading, spacing: 8) {
             ForEach(keys, id: \.self) { key in
                 HStack {
-                    Text(key)
+                    Text(manager.choiceLabel(for: field, choice: key))
                         .frame(width: 100, alignment: .leading)
 
                     Picker("", selection: Binding(

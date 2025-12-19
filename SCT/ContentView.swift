@@ -22,7 +22,7 @@ enum SidebarItem: String, CaseIterable, Identifiable {
         case .schemes: return "输入方案"
         case .panel: return "候选词面板"
         case .behaviors: return "输入行为"
-        case .apps: return "应用设置"
+        case .apps: return "应用程序"
         case .advanced: return "高级设置"
         case .prototype: return "Schema 驱动预览"
         }

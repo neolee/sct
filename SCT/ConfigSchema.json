@@ -391,17 +391,17 @@
     },
     {
       "id": "appOptions",
-      "title": "应用特定设置",
+      "title": "应用程序",
       "icon": "rectangle.3.group",
       "targetFile": "squirrel",
       "fields": [
         {
           "id": "appsTable",
           "label": "应用列表",
-          "type": "table",
+          "type": "appOptions",
           "keyPath": "app_options",
           "columns": [
-            {"key": "bundleID", "label": "Bundle ID", "type": "text", "isKey": true},
+            {"key": "bundleID", "label": "应用程序 ID", "type": "text", "isKey": true},
             {"key": "ascii_mode", "label": "默认英文", "type": "toggle"},
             {"key": "inline", "label": "临时内嵌", "type": "toggle", "optional": true},
             {"key": "no_inline", "label": "禁用内嵌", "type": "toggle", "optional": true},

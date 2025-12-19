@@ -29,7 +29,6 @@ final class RimeConfigManager: ObservableObject {
     @Published var colorScheme: String = "purity_of_form_custom"
     @Published var fontFace: String = "Avenir"
     @Published var fontPoint: Int = 16
-    @Published var appOptions: [AppOption] = []
     @Published var statusMessage: String = "正在读取配置..."
     @Published private(set) var mergedConfigs: [ConfigDomain: [String: Any]] = [:]
     @Published private(set) var patchConfigs: [ConfigDomain: [String: Any]] = [:]
@@ -352,7 +351,7 @@ final class RimeConfigManager: ObservableObject {
             "commit_code": "提交编码",
             "commit_text": "提交文字",
             "inline_ascii": "行内英文",
-            "Caps_Lock": "CapsLock",
+            "Caps_Lock": "Caps Lock",
             "Shift_L": "左 Shift",
             "Shift_R": "右 Shift",
             "Control_L": "左 Control",
@@ -668,19 +667,6 @@ final class RimeConfigManager: ObservableObject {
                     fontPoint = fp
                 }
             }
-
-            if let apps = mergedSquirrel["app_options"] as? [String: Any] {
-                appOptions = apps.compactMap { key, value in
-                    guard let dict = value as? [String: Any] else { return nil }
-                    let ascii = dict["ascii_mode"] as? Bool ?? false
-                    return AppOption(bundleID: key, asciiMode: ascii)
-                }
-                .sorted { $0.bundleID < $1.bundleID }
-            } else {
-                appOptions = []
-            }
-        } else {
-            appOptions = []
         }
     }
 
