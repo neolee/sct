@@ -304,7 +304,7 @@ struct SchemaListControl: View {
 
     var body: some View {
         let availableSchemas = manager.availableSchemas
-        let selectedSchemaIDs = (manager.mergedConfig(for: domain)[field.keyPath] as? [[String: Any]])?
+        let selectedSchemaIDs = (manager.value(for: field.keyPath, in: domain) as? [[String: Any]])?
             .compactMap { $0["schema"] as? String } ?? []
 
         let activeSchemas = availableSchemas.filter { selectedSchemaIDs.contains($0.id) }
@@ -396,7 +396,7 @@ struct SchemaListControl: View {
             Toggle("", isOn: Binding(
                 get: { isSelected },
                 set: { newValue in
-                    var currentList = (manager.mergedConfig(for: domain)[field.keyPath] as? [[String: Any]]) ?? []
+                    var currentList = (manager.value(for: field.keyPath, in: domain) as? [[String: Any]]) ?? []
                     if newValue {
                         if !currentList.contains(where: { ($0["schema"] as? String) == schema.id }) {
                             currentList.append(["schema": schema.id])
@@ -422,7 +422,7 @@ struct AppOptionsControl: View {
     @State private var newBundleID: String = ""
 
     var body: some View {
-        let options = (manager.mergedConfig(for: domain)[field.keyPath] as? [String: [String: Any]]) ?? [:]
+        let options = (manager.value(for: field.keyPath, in: domain) as? [String: [String: Any]]) ?? [:]
         let sortedKeys = options.keys.sorted()
 
         VStack(alignment: .leading, spacing: 12) {
@@ -489,7 +489,7 @@ struct AppOptionsControl: View {
 
     @ViewBuilder
     private func flagToggle(bundleID: String, flag: String) -> some View {
-        let options = (manager.mergedConfig(for: domain)[field.keyPath] as? [String: [String: Any]]) ?? [:]
+        let options = (manager.value(for: field.keyPath, in: domain) as? [String: [String: Any]]) ?? [:]
         let flags = options[bundleID] ?? [:]
         let isOn = flags[flag] as? Bool ?? false
 
@@ -518,7 +518,7 @@ struct KeyBinderControl: View {
     @ObservedObject var manager: RimeConfigManager
 
     var body: some View {
-        let bindings = (manager.mergedConfig(for: domain)[field.keyPath] as? [[String: Any]]) ?? []
+        let bindings = (manager.value(for: field.keyPath, in: domain) as? [[String: Any]]) ?? []
 
         VStack(alignment: .leading, spacing: 12) {
             HStack {
@@ -567,7 +567,7 @@ struct KeyMappingControl: View {
     @ObservedObject var manager: RimeConfigManager
 
     var body: some View {
-        let mapping = (manager.mergedConfig(for: domain)[field.keyPath] as? [String: String]) ?? [:]
+        let mapping = (manager.value(for: field.keyPath, in: domain) as? [String: String]) ?? [:]
         let keys = field.keys ?? []
         let choices = field.choices ?? []
 
@@ -604,15 +604,20 @@ struct HotkeyListControl: View {
     @ObservedObject var manager: RimeConfigManager
 
     @State private var newHotkey: String = ""
+    @State private var isAdding = false
 
     var body: some View {
-        let hotkeys = (manager.mergedConfig(for: domain)[field.keyPath] as? [String]) ?? []
+        let hotkeys = (manager.value(for: field.keyPath, in: domain) as? [String]) ?? []
 
         VStack(alignment: .leading, spacing: 8) {
             ForEach(hotkeys, id: \.self) { hotkey in
                 HStack {
                     Text(hotkey)
                         .font(.system(.body, design: .monospaced))
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(Color.accentColor.opacity(0.1))
+                        .cornerRadius(4)
                     Spacer()
                     Button(role: .destructive) {
                         var currentHotkeys = hotkeys
@@ -626,19 +631,37 @@ struct HotkeyListControl: View {
                 }
             }
 
-            HStack {
-                TextField("添加快捷键 (如 Control+grave)", text: $newHotkey)
-                    .textFieldStyle(.roundedBorder)
-                Button("添加") {
-                    guard !newHotkey.isEmpty else { return }
-                    var currentHotkeys = hotkeys
-                    if !currentHotkeys.contains(newHotkey) {
-                        currentHotkeys.append(newHotkey)
-                        manager.updateValue(currentHotkeys, for: field.keyPath, in: domain)
+            if isAdding {
+                HStack {
+                    HotkeyRecorder(hotkey: $newHotkey)
+
+                    Button("添加") {
+                        guard !newHotkey.isEmpty else { return }
+                        var currentHotkeys = hotkeys
+                        if !currentHotkeys.contains(newHotkey) {
+                            currentHotkeys.append(newHotkey)
+                            manager.updateValue(currentHotkeys, for: field.keyPath, in: domain)
+                        }
+                        newHotkey = ""
+                        isAdding = false
                     }
-                    newHotkey = ""
+                    .buttonStyle(.borderedProminent)
+                    .disabled(newHotkey.isEmpty)
+
+                    Button("取消") {
+                        isAdding = false
+                        newHotkey = ""
+                    }
+                    .buttonStyle(.bordered)
                 }
-                .disabled(newHotkey.isEmpty)
+                .padding(8)
+                .background(Color.gray.opacity(0.05))
+                .cornerRadius(8)
+            } else {
+                Button(action: { isAdding = true }) {
+                    Label("添加快捷键", systemImage: "plus.circle")
+                }
+                .buttonStyle(.link)
             }
         }
         .frame(maxWidth: 300)
