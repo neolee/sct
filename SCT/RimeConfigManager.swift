@@ -149,6 +149,58 @@ final class RimeConfigManager: ObservableObject {
         loadConfig()
     }
 
+    func addNewSchema(id: String, name: String) {
+        let fileName = "\(id).schema.yaml"
+        let url = rimePath.appendingPathComponent(fileName)
+
+        let content = """
+        # Rime schema settings
+        schema:
+          schema_id: \(id)
+          name: \(name)
+          version: "0.1"
+        """
+
+        do {
+            try content.write(to: url, atomically: true, encoding: .utf8)
+            loadConfig()
+            statusMessage = "已添加方案: \(name)"
+        } catch {
+            statusMessage = "创建方案失败: \(error.localizedDescription)"
+        }
+    }
+
+    func deleteSchema(id: String) {
+        let fileName = "\(id).schema.yaml"
+        let url = rimePath.appendingPathComponent(fileName)
+
+        do {
+            // 1. Remove from schema_list if present in patch
+            var patch = patchConfigs[.default] ?? [:]
+            if var schemaList = patch["schema_list"] as? [[String: Any]] {
+                let originalCount = schemaList.count
+                schemaList.removeAll { ($0["schema"] as? String) == id }
+                if schemaList.count != originalCount {
+                    patch["schema_list"] = schemaList
+                    patchConfigs[.default] = patch
+                    saveFullPatch(in: .default)
+                }
+            }
+
+            // 2. Delete the file
+            if fileManager.fileExists(atPath: url.path) {
+                try fileManager.removeItem(at: url)
+                loadConfig()
+                statusMessage = "已删除方案文件并清理配置: \(id)"
+            } else {
+                loadConfig()
+                statusMessage = "已清理配置: \(id)"
+            }
+        } catch {
+            statusMessage = "删除方案失败: \(error.localizedDescription)"
+        }
+    }
+
     /// Triggers Squirrel to reload its configuration.
     func deploy() {
         let squirrelAppPath = "/Library/Input Methods/Squirrel.app/Contents/MacOS/Squirrel"

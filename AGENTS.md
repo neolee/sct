@@ -61,6 +61,7 @@ After saving changes, Squirrel needs to "Deploy" to apply them.
 
 ### File Monitoring
 - Monitor `~/Library/Rime` for external changes to keep the GUI in sync.
+- Automatically scan `~/Library/Rime` for `*.schema.yaml` files to populate the available schema list, ensuring user-added schemas are recognized.
 
 ### Sandbox & File Access
 - During development we disable the App Sandbox so SCT can access the real `~/Library/Rime` path for schema testing.

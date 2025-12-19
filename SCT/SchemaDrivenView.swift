@@ -297,43 +297,120 @@ struct SchemaListControl: View {
     let domain: RimeConfigManager.ConfigDomain
     @ObservedObject var manager: RimeConfigManager
 
+    @State private var showAll = false
+    @State private var newID = ""
+    @State private var newName = ""
+    @State private var isAdding = false
+
     var body: some View {
         let availableSchemas = manager.availableSchemas
         let selectedSchemaIDs = (manager.mergedConfig(for: domain)[field.keyPath] as? [[String: Any]])?
             .compactMap { $0["schema"] as? String } ?? []
 
-        VStack(alignment: .leading, spacing: 8) {
-            ForEach(availableSchemas, id: \.id) { schema in
-                HStack {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(schema.name)
-                            .font(.body)
-                        Text(schema.id)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                    Spacer()
-                    Toggle("", isOn: Binding(
-                        get: { selectedSchemaIDs.contains(schema.id) },
-                        set: { isSelected in
-                            var currentList = (manager.mergedConfig(for: domain)[field.keyPath] as? [[String: Any]]) ?? []
-                            if isSelected {
-                                if !currentList.contains(where: { ($0["schema"] as? String) == schema.id }) {
-                                    currentList.append(["schema": schema.id])
-                                }
-                            } else {
-                                currentList.removeAll { ($0["schema"] as? String) == schema.id }
-                            }
-                            manager.updateValue(currentList, for: field.keyPath, in: domain)
-                        }
-                    ))
-                    .toggleStyle(.checkbox)
-                    .labelsHidden()
+        let activeSchemas = availableSchemas.filter { selectedSchemaIDs.contains($0.id) }
+        let inactiveSchemas = availableSchemas.filter { !selectedSchemaIDs.contains($0.id) }
+
+        VStack(alignment: .leading, spacing: 12) {
+            // Active Section
+            ForEach(activeSchemas) { schema in
+                schemaRow(schema, isSelected: true)
+            }
+
+            if !inactiveSchemas.isEmpty {
+                Button(showAll ? "收起未激活方案" : "显示更多方案 (\(inactiveSchemas.count))") {
+                    withAnimation { showAll.toggle() }
                 }
-                .padding(.vertical, 2)
+                .buttonStyle(.link)
+                .font(.caption)
+            }
+
+            if showAll {
+                VStack(alignment: .leading, spacing: 8) {
+                    ForEach(inactiveSchemas) { schema in
+                        schemaRow(schema, isSelected: false)
+                    }
+                }
+                .padding(.leading, 8)
+                .transition(.opacity.combined(with: .move(edge: .top)))
+            }
+
+            Divider()
+
+            // Add New Section
+            if isAdding {
+                VStack(spacing: 8) {
+                    TextField("方案 ID (如 rime_ice)", text: $newID)
+                        .textFieldStyle(.roundedBorder)
+                    TextField("方案名称 (如 雾凇拼音)", text: $newName)
+                        .textFieldStyle(.roundedBorder)
+                    HStack {
+                        Button("取消") { isAdding = false }
+                        Spacer()
+                        Button("确定") {
+                            manager.addNewSchema(id: newID, name: newName)
+                            newID = ""
+                            newName = ""
+                            isAdding = false
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .disabled(newID.isEmpty || newName.isEmpty)
+                    }
+                }
+                .padding(8)
+                .background(Color.gray.opacity(0.1))
+                .cornerRadius(8)
+            } else {
+                Button(action: { isAdding = true }) {
+                    Label("添加新方案", systemImage: "plus.circle")
+                }
+                .buttonStyle(.link)
             }
         }
-        .frame(maxWidth: 300)
+        .frame(maxWidth: 350)
+    }
+
+    @ViewBuilder
+    private func schemaRow(_ schema: RimeConfigManager.RimeSchema, isSelected: Bool) -> some View {
+        HStack {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(schema.name)
+                    .font(.body)
+                Text(schema.id)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            Spacer()
+
+            if !schema.isBuiltIn {
+                Button(role: .destructive) {
+                    manager.deleteSchema(id: schema.id)
+                } label: {
+                    Image(systemName: "trash")
+                        .font(.caption)
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(.red)
+                .padding(.trailing, 4)
+            }
+
+            Toggle("", isOn: Binding(
+                get: { isSelected },
+                set: { newValue in
+                    var currentList = (manager.mergedConfig(for: domain)[field.keyPath] as? [[String: Any]]) ?? []
+                    if newValue {
+                        if !currentList.contains(where: { ($0["schema"] as? String) == schema.id }) {
+                            currentList.append(["schema": schema.id])
+                        }
+                    } else {
+                        currentList.removeAll { ($0["schema"] as? String) == schema.id }
+                    }
+                    manager.updateValue(currentList, for: field.keyPath, in: domain)
+                }
+            ))
+            .toggleStyle(.checkbox)
+            .labelsHidden()
+        }
+        .padding(.vertical, 2)
     }
 }
 
