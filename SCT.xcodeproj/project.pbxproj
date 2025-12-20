@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		B5AF88462EF3F1F2000868B9 /* Yams in Frameworks */ = {isa = PBXBuildFile; productRef = B5AF88452EF3F1F2000868B9 /* Yams */; };
+		B5AF88462EF3F1F2000868BA /* MarkdownUI in Frameworks */ = {isa = PBXBuildFile; productRef = B5AF88452EF3F1F2000868BA /* MarkdownUI */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -27,6 +28,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				B5AF88462EF3F1F2000868BA /* MarkdownUI in Frameworks */,
 				B5AF88462EF3F1F2000868B9 /* Yams in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -78,6 +80,7 @@
 			);
 			name = SCT;
 			packageProductDependencies = (
+				B5AF88452EF3F1F2000868BA /* MarkdownUI */,
 				B5AF88452EF3F1F2000868B9 /* Yams */,
 			);
 			productName = SCT;
@@ -109,6 +112,7 @@
 			mainGroup = B5AF882D2EF3F059000868B9;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
+				B5AF88472EF3F1F2000868BA /* XCRemoteSwiftPackageReference "swift-markdown-ui" */,
 				B5AF88472EF3F1F2000868B9 /* XCRemoteSwiftPackageReference "Yams" */,
 			);
 			preferredProjectObjectVersion = 77;
@@ -176,6 +180,7 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
+				DEAD_CODE_STRIPPING = YES;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				DEVELOPMENT_TEAM = S2D42Y29YT;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
@@ -201,6 +206,7 @@
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = macosx;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 			};
@@ -240,6 +246,7 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
+				DEAD_CODE_STRIPPING = YES;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = S2D42Y29YT;
 				ENABLE_NS_ASSERTIONS = NO;
@@ -258,6 +265,7 @@
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				SDKROOT = macosx;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_COMPILATION_MODE = wholemodule;
 			};
 			name = Release;
@@ -272,10 +280,12 @@
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
+				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = S2D42Y29YT;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
+				ENABLE_USER_SELECTED_FILES = readwrite;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -305,10 +315,12 @@
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
+				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = S2D42Y29YT;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
+				ENABLE_USER_SELECTED_FILES = readwrite;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -360,6 +372,14 @@
 				minimumVersion = 5.0.6;
 			};
 		};
+		B5AF88472EF3F1F2000868BA /* XCRemoteSwiftPackageReference "swift-markdown-ui" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/gonzalezreal/swift-markdown-ui";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.4.1;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -367,6 +387,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = B5AF88472EF3F1F2000868B9 /* XCRemoteSwiftPackageReference "Yams" */;
 			productName = Yams;
+		};
+		B5AF88452EF3F1F2000868BA /* MarkdownUI */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = B5AF88472EF3F1F2000868BA /* XCRemoteSwiftPackageReference "swift-markdown-ui" */;
+			productName = MarkdownUI;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

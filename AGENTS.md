@@ -22,6 +22,7 @@ The goal is to provide a native macOS GUI for configuring the Squirrel input met
 - **Language**: Swift 6.0+
 - **Framework**: SwiftUI (Targeting latest macOS)
 - **YAML Engine**: [Yams](https://github.com/jpsim/Yams) for robust YAML parsing and serialization.
+- **Markdown Engine**: [MarkdownUI](https://github.com/gonzalezreal/swift-markdown-ui) for rich help documentation rendering.
 
 ### 3. Configuration Merging Logic
 Rime's patch system supports:
@@ -125,6 +126,7 @@ The "Advanced Settings" tab is designed as a **Smart Configuration Browser** to 
 - [x] Documentation and user friendly help within the app (Added HelpView and field descriptions) (2025-12-20).
 - [x] UI String Consolidation: Created `L10n.swift` to centralize static UI strings and moved Help content to `Help.md` (2025-12-20).
 - [x] Markdown-based Help system: Refactored `HelpView` to load content from an external `Help.md` file for easier maintenance (2025-12-20).
+- [x] Fix Markdown rendering: Integrated `MarkdownUI` library for professional rendering of headers, lists, and GitHub Flavored Markdown (2025-12-20).
 - [ ] Backup/cloud sync of `.custom.yaml` files. (Users can use iCloud/Dropbox; SCT provides "Show in Finder" for convenience).
 - [ ] Auto update mechanism for SCT itself. (Added "Check for Updates" link to GitHub).
 - [ ] Final polish and distribution preparation.

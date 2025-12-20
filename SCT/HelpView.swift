@@ -1,12 +1,14 @@
 import SwiftUI
+import MarkdownUI
 
 struct HelpView: View {
-    @State private var helpContent: AttributedString = AttributedString(L10n.loadingHelp)
+    @State private var helpContent: String = L10n.loadingHelp
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
-                Text(helpContent)
+                Markdown(helpContent)
+                    .markdownTheme(.docC)
                     .textSelection(.enabled)
 
                 Divider()
@@ -22,7 +24,7 @@ struct HelpView: View {
                     aboutSection
                 }
             }
-            .padding(40)
+            .padding(16)
             .frame(maxWidth: 800, alignment: .leading)
         }
         .navigationTitle(L10n.help)
@@ -37,21 +39,13 @@ struct HelpView: View {
             // Fallback if file not in bundle (e.g. during development if not added to target)
             if let devUrl = Bundle.main.bundleURL.deletingLastPathComponent().appendingPathComponent("SCT/Help.md") as URL?,
                let devContent = try? String(contentsOf: devUrl, encoding: .utf8) {
-                parseMarkdown(devContent)
+                helpContent = devContent
                 return
             }
-            helpContent = AttributedString(L10n.helpLoadError)
+            helpContent = L10n.helpLoadError
             return
         }
-        parseMarkdown(content)
-    }
-
-    private func parseMarkdown(_ content: String) {
-        do {
-            helpContent = try AttributedString(markdown: content, options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace))
-        } catch {
-            helpContent = AttributedString(content)
-        }
+        helpContent = content
     }
 
     private var aboutSection: some View {
@@ -64,7 +58,7 @@ struct HelpView: View {
                     .frame(width: 64, height: 64)
 
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Squirrel Configuration Tool")
+                    Text(L10n.appTitle)
                         .font(.headline)
                     Text(String(format: L10n.version, "1.0.0 (Build 20251219)"))
                         .font(.subheadline)
