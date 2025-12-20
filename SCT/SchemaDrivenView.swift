@@ -582,9 +582,9 @@ struct KeyBinderControl: View {
 
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Text("When").frame(width: 80, alignment: .leading)
-                Text("Accept").frame(width: 100, alignment: .leading)
-                Text("Send/Toggle").frame(width: 120, alignment: .leading)
+                Text(L10n.when).frame(width: 80, alignment: .leading)
+                Text(L10n.accept).frame(width: 100, alignment: .leading)
+                Text(L10n.sendToggle).frame(width: 120, alignment: .leading)
                 Spacer()
             }
             .font(.caption.bold())
@@ -593,7 +593,7 @@ struct KeyBinderControl: View {
             ForEach(0..<bindings.count, id: \.self) { index in
                 let binding = bindings[index]
                 HStack {
-                    Text(binding["when"] as? String ?? "always")
+                    Text(L10n.whenLabel(binding["when"] as? String ?? "always"))
                         .frame(width: 80, alignment: .leading)
                     Text(binding["accept"] as? String ?? "")
                         .frame(width: 100, alignment: .leading)

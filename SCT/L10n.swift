@@ -31,10 +31,8 @@ struct L10n {
     static let schemaDeleted = "已删除方案文件并清理配置: %@"
     static let configCleaned = "已清理配置: %@"
     static let schemaDeleteFailed = "删除方案失败: %@"
-    static let updatedFile = "已更新 %@"
+    static let saveSuccess = "已保存 %@"
     static let saveFailed = "保存失败：%@"
-    static let savedFile = "已保存 %@"
-    static let savedToFile = "已保存到 %@"
 
     // Access Request
     static let accessTitle = "需要访问 Rime 配置目录"
@@ -98,9 +96,29 @@ struct L10n {
     static let reset = "重置"
     static let defaultValue = "默认"
     static let patchedValue = "已修改"
+    static let when = "When"
+    static let accept = "Accept"
+    static let sendToggle = "Send / Toggle"
+    static let whenAlways = "always"
+    static let whenComposing = "composing"
+    static let whenHasMenu = "has_menu"
+    static let whenPaging = "paging"
+
+    static func whenLabel(_ when: String) -> String {
+        switch when {
+        case "always": return whenAlways
+        case "composing": return whenComposing
+        case "has_menu": return whenHasMenu
+        case "paging": return whenPaging
+        default: return when
+        }
+    }
+
     static let save = "保存"
     static let rawYamlDescription = "直接编辑 .custom.yaml 文件。请确保 YAML 格式正确。"
     static let configFile = "配置文件"
+    static let defaultYaml = "default.yaml"
+    static let squirrelYaml = "squirrel.yaml"
     static let noResults = "无匹配结果"
 
     // Help & About

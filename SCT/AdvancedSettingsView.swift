@@ -16,8 +16,8 @@ struct AdvancedSettingsView: View {
                     .foregroundStyle(.secondary)
 
                 Picker("", selection: $selectedDomain) {
-                    Text("default.yaml").tag(RimeConfigManager.ConfigDomain.default)
-                    Text("squirrel.yaml").tag(RimeConfigManager.ConfigDomain.squirrel)
+                    Text(L10n.defaultYaml).tag(RimeConfigManager.ConfigDomain.default)
+                    Text(L10n.squirrelYaml).tag(RimeConfigManager.ConfigDomain.squirrel)
                 }
                 .pickerStyle(.segmented)
                 .frame(width: 220)

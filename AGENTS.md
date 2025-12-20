@@ -106,6 +106,13 @@ The "Advanced Settings" tab is designed as a **Smart Configuration Browser** to 
     - Enabled full-row click to focus the editor.
     - Implemented "Select All" on focus for faster editing.
 
+## Refinement and Cleanup (2025-12-20)
+- **Permission Management Refactoring**: Created `withSecurityScopedAccess` helper in `RimeConfigManager` to centralize sandbox access logic and reduce redundancy.
+- **UI String Consolidation**: Cleaned up `L10n.swift`, consolidated similar strings (e.g., `saveSuccess`), and moved remaining hardcoded strings (like "When", "Accept", "default.yaml") to the localization file.
+- **Code Cleanup**: Removed unused methods like `updateVirtualHotkeys` and ensured consistent use of `L10n` across all views.
+- **Technical String Reversion**: Reverted `key_binder` related strings (`when`, `accept`, `always`, `composing`, etc.) to their technical English terms in `L10n.swift`. This maintains consistency with Rime's engine terminology and official documentation, as these are considered "special key names" rather than user-facing labels.
+- **Placeholder Retention**: Decided to retain `KeyBinderControl` in `SchemaDrivenView.swift` as a placeholder for future complex shortcut management features, even though it is currently unused by `ConfigSchema.json`.
+
 ## Plan and Progress
 - [x] Initial project scaffolding (2025-12-18).
 - [x] Basic `RimeConfigManager` structure for YAML handling (2025-12-18).

@@ -43,6 +43,13 @@ final class RimeConfigManager: ObservableObject {
     private let fileManager = FileManager.default
     private let bookmarkKey = "RimeDirectoryBookmark"
 
+    /// Executes a block of code with security-scoped access to the Rime directory.
+    func withSecurityScopedAccess<T>(_ action: () throws -> T) rethrows -> T {
+        let isScoped = rimePath.startAccessingSecurityScopedResource()
+        defer { if isScoped { rimePath.stopAccessingSecurityScopedResource() } }
+        return try action()
+    }
+
     func resetAccess() {
         UserDefaults.standard.removeObject(forKey: bookmarkKey)
         self.rimePath = FileManager.default.homeDirectoryForCurrentUser
@@ -91,11 +98,10 @@ final class RimeConfigManager: ObservableObject {
     }
 
     private func checkActualAccess() -> Bool {
-        let isScoped = rimePath.startAccessingSecurityScopedResource()
-        defer { if isScoped { rimePath.stopAccessingSecurityScopedResource() } }
-
-        var isDir: ObjCBool = false
-        return FileManager.default.fileExists(atPath: rimePath.path, isDirectory: &isDir) && isDir.boolValue && FileManager.default.isReadableFile(atPath: rimePath.path)
+        return withSecurityScopedAccess {
+            var isDir: ObjCBool = false
+            return FileManager.default.fileExists(atPath: rimePath.path, isDirectory: &isDir) && isDir.boolValue && FileManager.default.isReadableFile(atPath: rimePath.path)
+        }
     }
 
     func requestAccess() {
@@ -164,65 +170,60 @@ final class RimeConfigManager: ObservableObject {
     }
 
     private func startMonitoring() {
-        guard rimePath.startAccessingSecurityScopedResource() else { return }
-        defer { rimePath.stopAccessingSecurityScopedResource() }
+        withSecurityScopedAccess {
+            folderDescriptor = open(rimePath.path, O_EVTONLY)
+            guard folderDescriptor != -1 else { return }
 
-        folderDescriptor = open(rimePath.path, O_EVTONLY)
-        guard folderDescriptor != -1 else { return }
+            folderMonitor = DispatchSource.makeFileSystemObjectSource(
+                fileDescriptor: folderDescriptor,
+                eventMask: .write,
+                queue: DispatchQueue.main
+            )
 
-        folderMonitor = DispatchSource.makeFileSystemObjectSource(
-            fileDescriptor: folderDescriptor,
-            eventMask: .write,
-            queue: DispatchQueue.main
-        )
-
-        folderMonitor?.setEventHandler { [weak self] in
-            // Directory content changed (file added, removed, or modified)
-            // We use a small delay to avoid multiple rapid reloads
-            self?.loadConfig()
-        }
-
-        folderMonitor?.setCancelHandler { [weak self] in
-            if let descriptor = self?.folderDescriptor {
-                close(descriptor)
+            folderMonitor?.setEventHandler { [weak self] in
+                // Directory content changed (file added, removed, or modified)
+                // We use a small delay to avoid multiple rapid reloads
+                self?.loadConfig()
             }
-        }
 
-        folderMonitor?.resume()
+            folderMonitor?.setCancelHandler { [weak self] in
+                if let descriptor = self?.folderDescriptor {
+                    close(descriptor)
+                }
+            }
+
+            folderMonitor?.resume()
+        }
     }
 
     func loadConfig() {
-        guard rimePath.startAccessingSecurityScopedResource() else {
-            statusMessage = L10n.accessDenied
-            return
+        withSecurityScopedAccess {
+            choicesCache.removeAll()
+            labelsCache.removeAll()
+
+            let hasDefaultFiles = fileExists(named: "default.yaml") || fileExists(named: "default.custom.yaml")
+            let hasSquirrelFiles = fileExists(named: "squirrel.yaml") || fileExists(named: "squirrel.custom.yaml")
+
+            guard hasDefaultFiles || hasSquirrelFiles else {
+                applyFallbackSnapshot()
+                statusMessage = L10n.usingExampleConfig
+                return
+            }
+
+            let defaultBase = loadYamlDictionary(named: "default.yaml")
+            let defaultPatch = loadPatchDictionary(named: "default.custom.yaml")
+            patchConfigs[.default] = defaultPatch
+            mergedConfigs[.default] = mergedDictionary(base: defaultBase, patch: normalizeRimeDictionary(defaultPatch))
+
+            let squirrelBase = loadYamlDictionary(named: "squirrel.yaml")
+            let squirrelPatch = loadPatchDictionary(named: "squirrel.custom.yaml")
+            patchConfigs[.squirrel] = squirrelPatch
+            mergedConfigs[.squirrel] = mergedDictionary(base: squirrelBase, patch: normalizeRimeDictionary(squirrelPatch))
+
+            parseAvailableSchemas()
+            applyMergedValues()
+            statusMessage = String(format: L10n.readPath, rimePath.path)
         }
-        defer { rimePath.stopAccessingSecurityScopedResource() }
-
-        choicesCache.removeAll()
-        labelsCache.removeAll()
-
-        let hasDefaultFiles = fileExists(named: "default.yaml") || fileExists(named: "default.custom.yaml")
-        let hasSquirrelFiles = fileExists(named: "squirrel.yaml") || fileExists(named: "squirrel.custom.yaml")
-
-        guard hasDefaultFiles || hasSquirrelFiles else {
-            applyFallbackSnapshot()
-            statusMessage = L10n.usingExampleConfig
-            return
-        }
-
-        let defaultBase = loadYamlDictionary(named: "default.yaml")
-        let defaultPatch = loadPatchDictionary(named: "default.custom.yaml")
-        patchConfigs[.default] = defaultPatch
-        mergedConfigs[.default] = mergedDictionary(base: defaultBase, patch: normalizeRimeDictionary(defaultPatch))
-
-        let squirrelBase = loadYamlDictionary(named: "squirrel.yaml")
-        let squirrelPatch = loadPatchDictionary(named: "squirrel.custom.yaml")
-        patchConfigs[.squirrel] = squirrelPatch
-        mergedConfigs[.squirrel] = mergedDictionary(base: squirrelBase, patch: normalizeRimeDictionary(squirrelPatch))
-
-        parseAvailableSchemas()
-        applyMergedValues()
-        statusMessage = String(format: L10n.readPath, rimePath.path)
     }
 
     private func parseAvailableSchemas() {
@@ -281,66 +282,58 @@ final class RimeConfigManager: ObservableObject {
     }
 
     func addNewSchema(id: String, name: String) {
-        guard rimePath.startAccessingSecurityScopedResource() else {
-            statusMessage = L10n.accessDenied
-            return
-        }
-        defer { rimePath.stopAccessingSecurityScopedResource() }
+        withSecurityScopedAccess {
+            let fileName = "\(id).schema.yaml"
+            let url = rimePath.appendingPathComponent(fileName)
 
-        let fileName = "\(id).schema.yaml"
-        let url = rimePath.appendingPathComponent(fileName)
+            let content = """
+            # Rime schema settings
+            schema:
+              schema_id: \(id)
+              name: \(name)
+              version: "0.1"
+            """
 
-        let content = """
-        # Rime schema settings
-        schema:
-          schema_id: \(id)
-          name: \(name)
-          version: "0.1"
-        """
-
-        do {
-            try content.write(to: url, atomically: true, encoding: .utf8)
-            loadConfig()
-            statusMessage = String(format: L10n.schemaAdded, name)
-        } catch {
-            statusMessage = String(format: L10n.schemaAddFailed, error.localizedDescription)
+            do {
+                try content.write(to: url, atomically: true, encoding: .utf8)
+                loadConfig()
+                statusMessage = String(format: L10n.schemaAdded, name)
+            } catch {
+                statusMessage = String(format: L10n.schemaAddFailed, error.localizedDescription)
+            }
         }
     }
 
     func deleteSchema(id: String) {
-        guard rimePath.startAccessingSecurityScopedResource() else {
-            statusMessage = L10n.accessDenied
-            return
-        }
-        defer { rimePath.stopAccessingSecurityScopedResource() }
+        withSecurityScopedAccess {
+            let fileName = "\(id).schema.yaml"
+            let url = rimePath.appendingPathComponent(fileName)
 
-        let fileName = "\(id).schema.yaml"
-        let url = rimePath.appendingPathComponent(fileName)
-
-        do {
-            // 1. Remove from schema_list if present in patch
-            var patch = patchConfigs[.default] ?? [:]
-            if var schemaList = patch["schema_list"] as? [[String: Any]] {
-                let originalCount = schemaList.count
-                schemaList.removeAll { ($0["schema"] as? String) == id }
-                if schemaList.count != originalCount {
-                    patch["schema_list"] = schemaList
-                    patchConfigs[.default] = patch
-                    saveFullPatch(in: .default)
+            do {
+                // 1. Remove from schema_list if present in patch
+                var patch = patchConfigs[.default] ?? [:]
+                if var schemaList = patch["schema_list"] as? [[String: Any]] {
+                    let originalCount = schemaList.count
+                    schemaList.removeAll { ($0["schema"] as? String) == id }
+                    if schemaList.count != originalCount {
+                        patch["schema_list"] = schemaList
+                        patchConfigs[.default] = patch
+                        saveFullPatch(in: .default)
+                    }
                 }
-            }
 
-            // 2. Delete the file
-            if fileManager.fileExists(atPath: url.path) {
-                try fileManager.removeItem(at: url)
-                loadConfig()
-                statusMessage = String(format: L10n.schemaDeleted, id)
-            } else {
-                loadConfig()
-                statusMessage = String(format: L10n.configCleaned, id)
+                // 2. Delete the file
+                if fileManager.fileExists(atPath: url.path) {
+                    try fileManager.removeItem(at: url)
+                    loadConfig()
+                    statusMessage = String(format: L10n.schemaDeleted, id)
+                } else {
+                    loadConfig()
+                    statusMessage = String(format: L10n.configCleaned, id)
+                }
+            } catch {
+                statusMessage = String(format: L10n.schemaDeleteFailed, error.localizedDescription)
             }
-        } catch {
-            statusMessage = String(format: L10n.schemaDeleteFailed, error.localizedDescription)
         }
     }
 
@@ -362,17 +355,16 @@ final class RimeConfigManager: ObservableObject {
     }
 
     private func touchConfigFiles() {
-        guard rimePath.startAccessingSecurityScopedResource() else { return }
-        defer { rimePath.stopAccessingSecurityScopedResource() }
-
-        let files = ["default.custom.yaml", "squirrel.custom.yaml"]
-        for fileName in files {
-            let fileURL = rimePath.appendingPathComponent(fileName)
-            if fileManager.fileExists(atPath: fileURL.path) {
-                try? fileManager.setAttributes([.modificationDate: Date()], ofItemAtPath: fileURL.path)
+        withSecurityScopedAccess {
+            let files = ["default.custom.yaml", "squirrel.custom.yaml"]
+            for fileName in files {
+                let fileURL = rimePath.appendingPathComponent(fileName)
+                if fileManager.fileExists(atPath: fileURL.path) {
+                    try? fileManager.setAttributes([.modificationDate: Date()], ofItemAtPath: fileURL.path)
+                }
             }
+            statusMessage = L10n.timestampUpdated
         }
-        statusMessage = L10n.timestampUpdated
     }
 
     func value(for keyPath: String, in domain: ConfigDomain) -> Any? {
@@ -617,49 +609,46 @@ final class RimeConfigManager: ObservableObject {
     }
 
     private func saveFullPatch(in domain: ConfigDomain) {
-        guard rimePath.startAccessingSecurityScopedResource() else { return }
-        defer { rimePath.stopAccessingSecurityScopedResource() }
+        withSecurityScopedAccess {
+            let patch = patchConfigs[domain] ?? [:]
+            let fileName = "\(domain.rawValue).custom.yaml"
+            let url = rimePath.appendingPathComponent(fileName)
 
-        let patch = patchConfigs[domain] ?? [:]
-        let fileName = "\(domain.rawValue).custom.yaml"
-        let url = rimePath.appendingPathComponent(fileName)
+            var root: [String: Any] = [:]
+            if fileManager.fileExists(atPath: url.path),
+               let contents = try? String(contentsOf: url, encoding: .utf8),
+               let existingRoot = try? Yams.load(yaml: contents) as? [String: Any] {
+                root = existingRoot
+            }
 
-        var root: [String: Any] = [:]
-        if fileManager.fileExists(atPath: url.path),
-           let contents = try? String(contentsOf: url, encoding: .utf8),
-           let existingRoot = try? Yams.load(yaml: contents) as? [String: Any] {
-            root = existingRoot
-        }
+            root["patch"] = patch
 
-        root["patch"] = patch
-
-        do {
-            let yaml = try Yams.dump(object: root, width: -1, allowUnicode: true, sortKeys: true)
-            try yaml.write(to: url, atomically: true, encoding: .utf8)
-            statusMessage = String(format: L10n.updatedFile, fileName)
-        } catch {
-            statusMessage = String(format: L10n.saveFailed, error.localizedDescription)
+            do {
+                let yaml = try Yams.dump(object: root, width: -1, allowUnicode: true, sortKeys: true)
+                try yaml.write(to: url, atomically: true, encoding: .utf8)
+                statusMessage = String(format: L10n.saveSuccess, fileName)
+            } catch {
+                statusMessage = String(format: L10n.saveFailed, error.localizedDescription)
+            }
         }
     }
 
     func loadRawYaml(for domain: ConfigDomain) -> String {
-        guard rimePath.startAccessingSecurityScopedResource() else { return "patch:\n" }
-        defer { rimePath.stopAccessingSecurityScopedResource() }
-
-        let fileName = "\(domain.rawValue).custom.yaml"
-        let url = rimePath.appendingPathComponent(fileName)
-        return (try? String(contentsOf: url, encoding: .utf8)) ?? "patch:\n"
+        withSecurityScopedAccess {
+            let fileName = "\(domain.rawValue).custom.yaml"
+            let url = rimePath.appendingPathComponent(fileName)
+            return (try? String(contentsOf: url, encoding: .utf8)) ?? "patch:\n"
+        }
     }
 
     func saveRawYaml(_ content: String, for domain: ConfigDomain) {
-        guard rimePath.startAccessingSecurityScopedResource() else { return }
-        defer { rimePath.stopAccessingSecurityScopedResource() }
-
-        let fileName = "\(domain.rawValue).custom.yaml"
-        let url = rimePath.appendingPathComponent(fileName)
-        try? content.write(to: url, atomically: true, encoding: .utf8)
-        loadConfig() // Reload to sync UI
-        statusMessage = String(format: L10n.savedFile, fileName)
+        withSecurityScopedAccess {
+            let fileName = "\(domain.rawValue).custom.yaml"
+            let url = rimePath.appendingPathComponent(fileName)
+            try? content.write(to: url, atomically: true, encoding: .utf8)
+            loadConfig() // Reload to sync UI
+            statusMessage = String(format: L10n.saveSuccess, fileName)
+        }
     }
     private func updateVirtualHotkeyPairs(_ pairs: [[String]], prevAction: String, nextAction: String, in domain: ConfigDomain) {
         let prevHotkeys = pairs.map { $0[0] }
@@ -697,31 +686,6 @@ final class RimeConfigManager: ObservableObject {
         }
     }
 
-    private func updateVirtualHotkeys(_ hotkeys: [String], for action: String, in domain: ConfigDomain) {
-        var bindings = value(for: "key_binder/bindings", in: domain) as? [[String: Any]] ?? []
-        let targetSend: String
-        let targetWhen: String
-
-        switch action {
-        case "cursor_prev": (targetSend, targetWhen) = ("Shift+Left", "composing")
-        case "cursor_next": (targetSend, targetWhen) = ("Shift+Right", "composing")
-        case "page_up": (targetSend, targetWhen) = ("Page_Up", "has_menu")
-        case "page_down": (targetSend, targetWhen) = ("Page_Down", "has_menu")
-        default: return
-        }
-
-        // 1. Remove existing bindings for this action
-        bindings.removeAll { ($0["send"] as? String) == targetSend && ($0["when"] as? String) == targetWhen }
-
-        // 2. Add new bindings
-        for hotkey in hotkeys {
-            bindings.append(["when": targetWhen, "accept": hotkey, "send": targetSend])
-        }
-
-        // 3. Update the real keyPath
-        updateValue(bindings, for: "key_binder/bindings", in: domain)
-    }
-
     private func updateInMemoryValue(_ value: Any, for components: ArraySlice<String>, in dictionary: inout [String: Any]) {
         guard let head = components.first else { return }
         if components.count == 1 {
@@ -734,34 +698,33 @@ final class RimeConfigManager: ObservableObject {
     }
 
     private func saveToPatch(_ value: Any, for keyPath: String, in domain: ConfigDomain) {
-        guard rimePath.startAccessingSecurityScopedResource() else { return }
-        defer { rimePath.stopAccessingSecurityScopedResource() }
+        withSecurityScopedAccess {
+            let fileName = domain == .default ? "default.custom.yaml" : "squirrel.custom.yaml"
+            let url = rimePath.appendingPathComponent(fileName)
 
-        let fileName = domain == .default ? "default.custom.yaml" : "squirrel.custom.yaml"
-        let url = rimePath.appendingPathComponent(fileName)
+            var root: [String: Any] = [:]
+            if fileManager.fileExists(atPath: url.path),
+               let contents = try? String(contentsOf: url, encoding: .utf8),
+               let existingRoot = try? Yams.load(yaml: contents) as? [String: Any] {
+                root = existingRoot
+            }
 
-        var root: [String: Any] = [:]
-        if fileManager.fileExists(atPath: url.path),
-           let contents = try? String(contentsOf: url, encoding: .utf8),
-           let existingRoot = try? Yams.load(yaml: contents) as? [String: Any] {
-            root = existingRoot
-        }
+            var patch = root["patch"] as? [String: Any] ?? [:]
 
-        var patch = root["patch"] as? [String: Any] ?? [:]
+            // Use flat keys (e.g., "style/font_face") instead of nested structures.
+            // This is the most robust way to patch Rime configs without overwriting sibling keys.
+            patch[keyPath] = value
+            root["patch"] = patch
 
-        // Use flat keys (e.g., "style/font_face") instead of nested structures.
-        // This is the most robust way to patch Rime configs without overwriting sibling keys.
-        patch[keyPath] = value
-        root["patch"] = patch
-
-        do {
-            // sortKeys: true ensures consistent output order
-            // allowUnicode: true ensures Chinese characters are not escaped
-            let yaml = try Yams.dump(object: root, width: -1, allowUnicode: true, sortKeys: true)
-            try yaml.write(to: url, atomically: true, encoding: String.Encoding.utf8)
-            statusMessage = String(format: L10n.savedToFile, fileName)
-        } catch {
-            statusMessage = String(format: L10n.saveFailed, error.localizedDescription)
+            do {
+                // sortKeys: true ensures consistent output order
+                // allowUnicode: true ensures Chinese characters are not escaped
+                let yaml = try Yams.dump(object: root, width: -1, allowUnicode: true, sortKeys: true)
+                try yaml.write(to: url, atomically: true, encoding: String.Encoding.utf8)
+                statusMessage = String(format: L10n.saveSuccess, fileName)
+            } catch {
+                statusMessage = String(format: L10n.saveFailed, error.localizedDescription)
+            }
         }
     }
 

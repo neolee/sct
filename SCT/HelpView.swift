@@ -16,11 +16,8 @@ struct HelpView: View {
 
                 VStack(alignment: .leading, spacing: 16) {
                     Button(action: {
-                        let url = manager.rimePath
-                        let isScoped = url.startAccessingSecurityScopedResource()
-                        NSWorkspace.shared.activateFileViewerSelecting([url])
-                        if isScoped {
-                            url.stopAccessingSecurityScopedResource()
+                        manager.withSecurityScopedAccess {
+                            NSWorkspace.shared.activateFileViewerSelecting([manager.rimePath])
                         }
                     }) {
                         Label(L10n.showInFinder, systemImage: "folder")
