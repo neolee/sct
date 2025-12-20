@@ -23,12 +23,12 @@ struct SCTApp: App {
             CommandGroup(replacing: .pasteboard) { }
 
             CommandGroup(replacing: .help) {
-                Button("SCT 官网") {
+                Button(L10n.sctWebsite) {
                     if let url = URL(string: "https://github.com/neolee/sct") {
                         NSWorkspace.shared.open(url)
                     }
                 }
-                Button("Squirrel 官网") {
+                Button(L10n.squirrelWebsite) {
                     if let url = URL(string: "https://github.com/rime/squirrel") {
                         NSWorkspace.shared.open(url)
                     }

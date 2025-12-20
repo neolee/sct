@@ -17,10 +17,10 @@ struct HotkeyRecorder: View {
         }) {
             HStack {
                 if isRecording {
-                    Text(currentStrokeString.isEmpty ? "请按下按键..." : currentStrokeString)
+                    Text(currentStrokeString.isEmpty ? L10n.pressKey : currentStrokeString)
                         .foregroundStyle(Color.accentColor)
                 } else {
-                    Text(hotkey.isEmpty ? "点击录制" : hotkey)
+                    Text(hotkey.isEmpty ? L10n.clickToRecord : hotkey)
                 }
 
                 if isRecording {

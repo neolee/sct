@@ -4,7 +4,7 @@ enum SchemaValueFormatter {
     static func string(from value: Any) -> String {
         switch value {
         case let bool as Bool:
-            return bool ? "开启" : "关闭"
+            return bool ? L10n.on : L10n.off
         case let int as Int:
             return String(int)
         case let double as Double:

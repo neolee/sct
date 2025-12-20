@@ -20,15 +20,15 @@ struct SchemaDrivenView: View {
                 let filteredSections = sectionIDs == nil ? schema.sections : schema.sections.filter { sectionIDs!.contains($0.id) }
                 SchemaSectionListView(sections: filteredSections, manager: manager, schemaStore: schemaStore)
             } else if let error = schemaStore.errorMessage {
-                ContentUnavailableView("无法加载 Schema",
+                ContentUnavailableView(L10n.loadSchemaError,
                                        systemImage: "exclamationmark.triangle",
                                        description: Text(error))
             } else {
-                ProgressView("正在加载 Schema...")
+                ProgressView(L10n.loadingSchema)
                     .padding()
             }
         }
-        .navigationTitle(title ?? "Schema 驱动预览")
+        .navigationTitle(title ?? L10n.defaultTitle)
         .rimeToolbar(manager: manager)
     }
 }
@@ -90,14 +90,28 @@ struct SchemaFieldRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             if field.type == .appOptions || field.type == .keyBinder || field.type == .hotkeyList || field.type == .hotkeyPairList {
-                Text(field.label)
-                    .fontWeight(.semibold)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(field.label)
+                        .fontWeight(.semibold)
+                    if let desc = field.description {
+                        Text(desc)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
                 controlView
             } else {
                 HStack(alignment: .top) {
-                    Text(field.label)
-                        .fontWeight(.semibold)
-                        .padding(.top, 4)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(field.label)
+                            .fontWeight(.semibold)
+                        if let desc = field.description {
+                            Text(desc)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    .padding(.top, 4)
                     Spacer()
                     controlView
                 }
@@ -142,7 +156,7 @@ struct SchemaFieldRow: View {
                 set: { manager.updateValue($0, for: field.keyPath, in: domain) }
             )) {
                 if rawValue == nil {
-                    Text("未设置").tag("")
+                    Text(L10n.notSet).tag("")
                 }
                 ForEach(choices, id: \.self) { choice in
                     Text(manager.choiceLabel(for: field, choice: choice)).tag(choice)
@@ -175,7 +189,7 @@ struct SchemaFieldRow: View {
                 ))
                 .labelsHidden()
             } else {
-                Text("无效颜色")
+                Text(L10n.invalidColor)
                     .foregroundStyle(.secondary)
             }
 
@@ -186,7 +200,7 @@ struct SchemaFieldRow: View {
                 set: { manager.updateValue($0, for: field.keyPath, in: domain) }
             )) {
                 if fonts.isEmpty {
-                    Text("正在加载字体...").tag("Avenir")
+                    Text(L10n.loadingFonts).tag("Avenir")
                 } else {
                     ForEach(fonts, id: \.self) { font in
                         Text(font).tag(font)
@@ -327,7 +341,7 @@ struct SchemaListControl: View {
             }
 
             if !inactiveSchemas.isEmpty {
-                Button(showAll ? "收起未激活方案" : "显示更多方案 (\(inactiveSchemas.count))") {
+                Button(showAll ? L10n.hideInactiveSchemas : String(format: L10n.showMoreSchemas, inactiveSchemas.count)) {
                     withAnimation { showAll.toggle() }
                 }
                 .buttonStyle(.link)
@@ -349,14 +363,14 @@ struct SchemaListControl: View {
             // Add New Section
             if isAdding {
                 VStack(spacing: 8) {
-                    TextField("方案 ID (如 rime_ice)", text: $newID)
+                    TextField(L10n.schemaIdPlaceholder, text: $newID)
                         .textFieldStyle(.roundedBorder)
-                    TextField("方案名称 (如 雾凇拼音)", text: $newName)
+                    TextField(L10n.schemaNamePlaceholder, text: $newName)
                         .textFieldStyle(.roundedBorder)
                     HStack {
-                        Button("取消") { isAdding = false }
+                        Button(L10n.cancel) { isAdding = false }
                         Spacer()
-                        Button("确定") {
+                        Button(L10n.confirm) {
                             manager.addNewSchema(id: newID, name: newName)
                             newID = ""
                             newName = ""
@@ -371,7 +385,7 @@ struct SchemaListControl: View {
                 .cornerRadius(8)
             } else {
                 Button(action: { isAdding = true }) {
-                    Label("添加新方案", systemImage: "plus.circle")
+                    Label(L10n.addSchema, systemImage: "plus.circle")
                 }
                 .buttonStyle(.link)
             }
@@ -438,14 +452,14 @@ struct AppOptionsControl: View {
         VStack(alignment: .leading, spacing: 12) {
             // Header
             HStack {
-                Text("应用程序 ID")
+                Text(L10n.appId)
                     .frame(maxWidth: .infinity, alignment: .leading)
 
                 Group {
-                    Text("默认英文").frame(width: 70)
-                    Text("临时内嵌").frame(width: 70)
-                    Text("禁用内嵌").frame(width: 70)
-                    Text("Vim 模式").frame(width: 70)
+                    Text(L10n.defaultEnglish).frame(width: 70)
+                    Text(L10n.tempInline).frame(width: 70)
+                    Text(L10n.disableInline).frame(width: 70)
+                    Text(L10n.vimMode).frame(width: 70)
                 }
                 .multilineTextAlignment(.center)
 
@@ -485,17 +499,17 @@ struct AppOptionsControl: View {
             Divider()
 
             HStack {
-                TextField("输入或选择应用程序 ID", text: $newBundleID)
+                TextField(L10n.appIdPlaceholder, text: $newBundleID)
                     .textFieldStyle(.roundedBorder)
                     .onSubmit { addBundleID() }
 
                 Button {
                     selectApp()
                 } label: {
-                    Label("选择应用...", systemImage: "app.badge")
+                    Label(L10n.selectApp, systemImage: "app.badge")
                 }
 
-                Button("添加") {
+                Button(L10n.add) {
                     addBundleID()
                 }
                 .buttonStyle(.borderedProminent)
@@ -681,7 +695,7 @@ struct HotkeyListControl: View {
                 HStack {
                     HotkeyRecorder(hotkey: $newHotkey)
 
-                    Button("添加") {
+                    Button(L10n.add) {
                         guard !newHotkey.isEmpty else { return }
                         var currentHotkeys = hotkeys
                         if !currentHotkeys.contains(newHotkey) {
@@ -694,7 +708,7 @@ struct HotkeyListControl: View {
                     .buttonStyle(.borderedProminent)
                     .disabled(newHotkey.isEmpty)
 
-                    Button("取消") {
+                    Button(L10n.cancel) {
                         isAdding = false
                         newHotkey = ""
                     }
@@ -705,7 +719,7 @@ struct HotkeyListControl: View {
                 .cornerRadius(8)
             } else {
                 Button(action: { isAdding = true }) {
-                    Label("添加快捷键", systemImage: "plus.circle")
+                    Label(L10n.addHotkey, systemImage: "plus.circle")
                 }
                 .buttonStyle(.link)
             }
@@ -787,7 +801,7 @@ struct HotkeyPairListControl: View {
                     }
 
                     HStack {
-                        Button("添加") {
+                        Button(L10n.add) {
                             guard !newHotkey1.isEmpty && !newHotkey2.isEmpty else { return }
                             var currentPairs = pairs
                             currentPairs.append([newHotkey1, newHotkey2])
@@ -799,7 +813,7 @@ struct HotkeyPairListControl: View {
                         .buttonStyle(.borderedProminent)
                         .disabled(newHotkey1.isEmpty || newHotkey2.isEmpty)
 
-                        Button("取消") {
+                        Button(L10n.cancel) {
                             isAdding = false
                             newHotkey1 = ""
                             newHotkey2 = ""
@@ -812,7 +826,7 @@ struct HotkeyPairListControl: View {
                 .cornerRadius(8)
             } else {
                 Button(action: { isAdding = true }) {
-                    Label("添加快捷键", systemImage: "plus.circle")
+                    Label(L10n.addHotkey, systemImage: "plus.circle")
                 }
                 .buttonStyle(.link)
             }

@@ -12,7 +12,7 @@ struct AdvancedSettingsView: View {
         VStack(spacing: 0) {
             // Header / Controls
             HStack(spacing: 6) {
-                Text("配置文件")
+                Text(L10n.configFile)
                     .foregroundStyle(.secondary)
 
                 Picker("", selection: $selectedDomain) {
@@ -26,11 +26,11 @@ struct AdvancedSettingsView: View {
                 Spacer()
 
                 Button(action: { showSourceEditor = true }) {
-                    Label("源码编辑", systemImage: "code.square")
+                    Label(L10n.sourceCodeMode, systemImage: "code.square")
                 }
                 .buttonStyle(.bordered)
 
-                Toggle("仅显示已修改", isOn: $showCustomizedOnly)
+                Toggle(L10n.modifiedOnly, isOn: $showCustomizedOnly)
                     .toggleStyle(.checkbox)
             }
             .padding()
@@ -47,7 +47,7 @@ struct AdvancedSettingsView: View {
                 }
 
                 if filteredKeys.isEmpty {
-                    ContentUnavailableView("无匹配结果", systemImage: "magnifyingglass")
+                    ContentUnavailableView(L10n.noResults, systemImage: "magnifyingglass")
                 } else {
                     ForEach(filteredKeys, id: \.self) { key in
                         AdvancedRowView(key: key, domain: selectedDomain, manager: manager)
@@ -55,8 +55,8 @@ struct AdvancedSettingsView: View {
                 }
             }
         }
-        .searchable(text: $searchText, placement: .automatic, prompt: "搜索键名...")
-        .navigationTitle("高级设置")
+        .searchable(text: $searchText, placement: .automatic, prompt: L10n.searchPlaceholder)
+        .navigationTitle(L10n.advanced)
         .rimeToolbar(manager: manager)
         .sheet(isPresented: $showSourceEditor) {
             SourceCodeEditorView(domain: selectedDomain, manager: manager)
@@ -88,7 +88,7 @@ struct AdvancedRowView: View {
                     }
 
                 if isCustomized {
-                    Text("已修改")
+                    Text(L10n.patchedValue)
                         .font(.caption2)
                         .padding(.horizontal, 4)
                         .padding(.vertical, 1)
@@ -104,7 +104,7 @@ struct AdvancedRowView: View {
                         manager.removePatch(for: key, in: domain)
                     } label: {
                         Image(systemName: "arrow.uturn.backward.circle")
-                            .help("还原为默认值")
+                            .help(L10n.reset)
                     }
                     .buttonStyle(.borderless)
                     .foregroundStyle(.secondary)
@@ -120,7 +120,7 @@ struct AdvancedRowView: View {
                         }
                     } label: {
                         Image(systemName: "plus.circle")
-                            .help("自定义此项")
+                            .help(L10n.customize)
                     }
                     .buttonStyle(.borderless)
                     .foregroundStyle(.secondary)
@@ -128,7 +128,7 @@ struct AdvancedRowView: View {
             }
 
             if isCustomized {
-                TextField("输入值...", text: Binding(
+                TextField("", text: Binding(
                     get: { rawString(from: value) },
                     set: { newValue in
                         let parsed = parseValue(newValue)
@@ -210,14 +210,14 @@ struct SourceCodeEditorView: View {
                 Divider()
 
                 HStack {
-                    Text("直接编辑 \(domain.rawValue).custom.yaml")
+                    Text(L10n.rawYamlDescription)
                         .font(.caption)
                         .foregroundStyle(.secondary)
                     Spacer()
-                    Button("取消") {
+                    Button(L10n.cancel) {
                         dismiss()
                     }
-                    Button("保存") {
+                    Button(L10n.save) {
                         manager.saveRawYaml(content, for: domain)
                         dismiss()
                     }
@@ -225,7 +225,7 @@ struct SourceCodeEditorView: View {
                 }
                 .padding()
             }
-            .navigationTitle("源码编辑")
+            .navigationTitle(L10n.sourceCodeMode)
         }
         .frame(minWidth: 600, minHeight: 400)
         .onAppear {

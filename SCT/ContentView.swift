@@ -13,16 +13,18 @@ enum SidebarItem: String, CaseIterable, Identifiable {
     case behaviors
     case apps
     case advanced
+    case help
 
     var id: String { rawValue }
 
     var title: String {
         switch self {
-        case .schemes: return "输入方案"
-        case .panel: return "候选词面板"
-        case .behaviors: return "输入行为"
-        case .apps: return "应用程序"
-        case .advanced: return "高级设置"
+        case .schemes: return L10n.schemes
+        case .panel: return L10n.panel
+        case .behaviors: return L10n.behaviors
+        case .apps: return L10n.apps
+        case .advanced: return L10n.advanced
+        case .help: return L10n.help
         }
     }
 
@@ -33,6 +35,7 @@ enum SidebarItem: String, CaseIterable, Identifiable {
         case .behaviors: return "keyboard"
         case .apps: return "apps.ipad"
         case .advanced: return "gearshape.2"
+        case .help: return "questionmark.circle"
         }
     }
 
@@ -43,6 +46,7 @@ enum SidebarItem: String, CaseIterable, Identifiable {
         case .behaviors: return ["asciiComposer", "keyBinder"]
         case .apps: return ["appOptions"]
         case .advanced: return nil
+        case .help: return nil
         }
     }
 }
@@ -60,16 +64,21 @@ struct ContentView: View {
                 }
             }
             .listStyle(.sidebar)
-            .navigationTitle("Squirrel 配置")
+            .navigationTitle(L10n.appTitle)
         } detail: {
             if let item = selection {
                 detailView(for: item)
             } else {
-                Text("请选择一个项目")
+                Text(L10n.selectItem)
                     .foregroundStyle(.secondary)
             }
         }
         .frame(minWidth: 960, minHeight: 620)
+        .overlay {
+            if !manager.hasAccess {
+                AccessRequestView(manager: manager)
+            }
+        }
         .overlay(alignment: .bottomLeading) {
             StatusBarView(status: manager.statusMessage)
                 .padding(.horizontal)
@@ -86,6 +95,8 @@ struct ContentView: View {
         switch item {
         case .advanced:
             AdvancedSettingsView(manager: manager)
+        case .help:
+            HelpView()
         default:
             SchemaDrivenView(schemaStore: schemaStore,
                              manager: manager,
@@ -102,7 +113,7 @@ extension View {
                 Button(action: { manager.deploy() }) {
                     Image(systemName: "arrow.clockwise")
                 }
-                .help("重新部署 Squirrel 以应用更改")
+                .help(L10n.deployHelp)
             }
         }
     }

@@ -119,9 +119,12 @@ The "Advanced Settings" tab is designed as a **Smart Configuration Browser** to 
 - [x] App options table: support add/remove rows with ascii_mode/inline/no_inline/vim_mode toggles plus validation and sorting (2025-12-19).
 - [x] App selection: allow users to select apps from /Applications to get Bundle ID (2025-12-19).
 - [x] UI Polish: rename "App Options" to "应用程序" and "Bundle ID" to "应用程序 ID" (2025-12-19).
-- [x] YAML editor prototype: merged + diff views, search/filter, and an Enable Customization switch per entry.
-- [x] Advanced "Source Code" mode for direct YAML editing.
-- [ ] Sandbox reactivation: re-enable App Sandbox, request `~/Library/Rime` access, persist the bookmark, retest reload/deploy.
-- [ ] Backup/cloud sync of `.custom.yaml` files.
-- [ ] Auto update mechanism for SCT itself. Also consider integrating with Homebrew Cask and/or GitHub Actions for easier distribution.
-- [ ] Documentation and user friendly help within the app (README.md, in-app tips for specific configurations and features, etc.).
+- [x] YAML editor prototype: merged + diff views, search/filter, and an Enable Customization switch per entry (2025-12-19).
+- [x] Advanced "Source Code" mode for direct YAML editing (2025-12-19).
+- [x] Sandbox reactivation: re-enable App Sandbox, request `~/Library/Rime` access, persist the bookmark, retest reload/deploy (2025-12-20).
+- [x] Documentation and user friendly help within the app (Added HelpView and field descriptions) (2025-12-20).
+- [x] UI String Consolidation: Created `L10n.swift` to centralize static UI strings and moved Help content to `Help.md` (2025-12-20).
+- [x] Markdown-based Help system: Refactored `HelpView` to load content from an external `Help.md` file for easier maintenance (2025-12-20).
+- [ ] Backup/cloud sync of `.custom.yaml` files. (Users can use iCloud/Dropbox; SCT provides "Show in Finder" for convenience).
+- [ ] Auto update mechanism for SCT itself. (Added "Check for Updates" link to GitHub).
+- [ ] Final polish and distribution preparation.

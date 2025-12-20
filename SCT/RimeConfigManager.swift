@@ -1,6 +1,7 @@
 import Foundation
 import Combine
 import Yams
+import AppKit
 
 /// A lightweight configuration loader that reads the available `.custom.yaml` patches.
 /// The goal for now is to exercise the Yams dependency and provide data for the prototype UI.
@@ -23,13 +24,14 @@ final class RimeConfigManager: ObservableObject {
         let isBuiltIn: Bool
     }
 
-    @Published var schemaList: [String] = ["正在读取..."]
+    @Published var schemaList: [String] = [L10n.loadingSchemas]
     @Published var availableSchemas: [RimeSchema] = []
     @Published var pageSize: Int = 5
     @Published var colorScheme: String = "purity_of_form_custom"
     @Published var fontFace: String = "Avenir"
     @Published var fontPoint: Int = 16
-    @Published var statusMessage: String = "正在读取配置..."
+    @Published var statusMessage: String = L10n.loadingConfig
+    @Published var hasAccess: Bool = false
     @Published private(set) var mergedConfigs: [ConfigDomain: [String: Any]] = [:]
     @Published private(set) var patchConfigs: [ConfigDomain: [String: Any]] = [:]
 
@@ -37,8 +39,9 @@ final class RimeConfigManager: ObservableObject {
     private var labelsCache: [String: String] = [:]
 
     private var saveTasks: [String: Task<Void, Never>] = [:]
-    private let rimePath: URL
+    private var rimePath: URL
     private let fileManager = FileManager.default
+    private let bookmarkKey = "RimeDirectoryBookmark"
 
     private var folderMonitor: DispatchSourceFileSystemObject?
     private var folderDescriptor: Int32 = -1
@@ -65,8 +68,73 @@ final class RimeConfigManager: ObservableObject {
         .appendingPathComponent("Library", isDirectory: true)
         .appendingPathComponent("Rime", isDirectory: true)) {
         self.rimePath = rimePath
-        loadConfig()
-        startMonitoring()
+
+        if loadBookmark() {
+            loadConfig()
+            startMonitoring()
+        } else {
+            statusMessage = L10n.accessRequired
+        }
+    }
+
+    func requestAccess() {
+        let openPanel = NSOpenPanel()
+        openPanel.message = L10n.accessPrompt
+        openPanel.prompt = L10n.accessConfirm
+        openPanel.canChooseFiles = false
+        openPanel.canChooseDirectories = true
+        openPanel.allowsMultipleSelection = false
+        openPanel.directoryURL = rimePath
+
+        openPanel.begin { [weak self] response in
+            guard let self = self, response == .OK, let url = openPanel.url else { return }
+
+            do {
+                let bookmarkData = try url.bookmarkData(
+                    options: .withSecurityScope,
+                    includingResourceValuesForKeys: nil,
+                    relativeTo: nil
+                )
+                UserDefaults.standard.set(bookmarkData, forKey: self.bookmarkKey)
+                self.rimePath = url
+                self.hasAccess = true
+                self.loadConfig()
+                self.startMonitoring()
+            } catch {
+                self.statusMessage = String(format: L10n.authFailed, error.localizedDescription)
+            }
+        }
+    }
+
+    private func loadBookmark() -> Bool {
+        guard let bookmarkData = UserDefaults.standard.data(forKey: bookmarkKey) else {
+            return false
+        }
+
+        var isStale = false
+        do {
+            let url = try URL(resolvingBookmarkData: bookmarkData,
+                             options: .withSecurityScope,
+                             relativeTo: nil,
+                             bookmarkDataIsStale: &isStale)
+
+            if isStale {
+                // Refresh bookmark if stale
+                let newBookmarkData = try url.bookmarkData(
+                    options: .withSecurityScope,
+                    includingResourceValuesForKeys: nil,
+                    relativeTo: nil
+                )
+                UserDefaults.standard.set(newBookmarkData, forKey: bookmarkKey)
+            }
+
+            self.rimePath = url
+            self.hasAccess = true
+            return true
+        } catch {
+            print("Error resolving bookmark: \(error)")
+            return false
+        }
     }
 
     deinit {
@@ -74,6 +142,9 @@ final class RimeConfigManager: ObservableObject {
     }
 
     private func startMonitoring() {
+        guard rimePath.startAccessingSecurityScopedResource() else { return }
+        defer { rimePath.stopAccessingSecurityScopedResource() }
+
         folderDescriptor = open(rimePath.path, O_EVTONLY)
         guard folderDescriptor != -1 else { return }
 
@@ -99,6 +170,12 @@ final class RimeConfigManager: ObservableObject {
     }
 
     func loadConfig() {
+        guard rimePath.startAccessingSecurityScopedResource() else {
+            statusMessage = L10n.accessDenied
+            return
+        }
+        defer { rimePath.stopAccessingSecurityScopedResource() }
+
         choicesCache.removeAll()
         labelsCache.removeAll()
 
@@ -107,7 +184,7 @@ final class RimeConfigManager: ObservableObject {
 
         guard hasDefaultFiles || hasSquirrelFiles else {
             applyFallbackSnapshot()
-            statusMessage = "使用示例配置"
+            statusMessage = L10n.usingExampleConfig
             return
         }
 
@@ -123,7 +200,7 @@ final class RimeConfigManager: ObservableObject {
 
         parseAvailableSchemas()
         applyMergedValues()
-        statusMessage = "已读取 \(rimePath.path)"
+        statusMessage = String(format: L10n.readPath, rimePath.path)
     }
 
     private func parseAvailableSchemas() {
@@ -182,6 +259,12 @@ final class RimeConfigManager: ObservableObject {
     }
 
     func addNewSchema(id: String, name: String) {
+        guard rimePath.startAccessingSecurityScopedResource() else {
+            statusMessage = L10n.accessDenied
+            return
+        }
+        defer { rimePath.stopAccessingSecurityScopedResource() }
+
         let fileName = "\(id).schema.yaml"
         let url = rimePath.appendingPathComponent(fileName)
 
@@ -196,13 +279,19 @@ final class RimeConfigManager: ObservableObject {
         do {
             try content.write(to: url, atomically: true, encoding: .utf8)
             loadConfig()
-            statusMessage = "已添加方案: \(name)"
+            statusMessage = String(format: L10n.schemaAdded, name)
         } catch {
-            statusMessage = "创建方案失败: \(error.localizedDescription)"
+            statusMessage = String(format: L10n.schemaAddFailed, error.localizedDescription)
         }
     }
 
     func deleteSchema(id: String) {
+        guard rimePath.startAccessingSecurityScopedResource() else {
+            statusMessage = L10n.accessDenied
+            return
+        }
+        defer { rimePath.stopAccessingSecurityScopedResource() }
+
         let fileName = "\(id).schema.yaml"
         let url = rimePath.appendingPathComponent(fileName)
 
@@ -223,13 +312,13 @@ final class RimeConfigManager: ObservableObject {
             if fileManager.fileExists(atPath: url.path) {
                 try fileManager.removeItem(at: url)
                 loadConfig()
-                statusMessage = "已删除方案文件并清理配置: \(id)"
+                statusMessage = String(format: L10n.schemaDeleted, id)
             } else {
                 loadConfig()
-                statusMessage = "已清理配置: \(id)"
+                statusMessage = String(format: L10n.configCleaned, id)
             }
         } catch {
-            statusMessage = "删除方案失败: \(error.localizedDescription)"
+            statusMessage = String(format: L10n.schemaDeleteFailed, error.localizedDescription)
         }
     }
 
@@ -242,15 +331,18 @@ final class RimeConfigManager: ObservableObject {
 
         do {
             try process.run()
-            statusMessage = "已触发重新部署"
+            statusMessage = L10n.deployTriggered
         } catch {
             // Fallback: touch the config files if the app is not found or fails
-            statusMessage = "部署失败，尝试更新文件时间戳..."
+            statusMessage = L10n.deployFailed
             touchConfigFiles()
         }
     }
 
     private func touchConfigFiles() {
+        guard rimePath.startAccessingSecurityScopedResource() else { return }
+        defer { rimePath.stopAccessingSecurityScopedResource() }
+
         let files = ["default.custom.yaml", "squirrel.custom.yaml"]
         for fileName in files {
             let fileURL = rimePath.appendingPathComponent(fileName)
@@ -258,7 +350,7 @@ final class RimeConfigManager: ObservableObject {
                 try? fileManager.setAttributes([.modificationDate: Date()], ofItemAtPath: fileURL.path)
             }
         }
-        statusMessage = "已更新文件时间戳"
+        statusMessage = L10n.timestampUpdated
     }
 
     func value(for keyPath: String, in domain: ConfigDomain) -> Any? {
@@ -379,21 +471,21 @@ final class RimeConfigManager: ObservableObject {
 
         // Hardcoded labels for common Rime options (can be moved to Schema or Localization later)
         let commonLabels: [String: String] = [
-            "ascii_punct": "英文标点",
-            "traditionalization": "简繁体",
-            "emoji": "Emoji",
-            "full_shape": "全角半角",
-            "search_single_char": "单字模式",
-            "noop": "无操作",
-            "clear": "清除输入",
-            "commit_code": "提交编码",
-            "commit_text": "提交文字",
-            "inline_ascii": "行内英文",
-            "Caps_Lock": "Caps Lock",
-            "Shift_L": "左 Shift",
-            "Shift_R": "右 Shift",
-            "Control_L": "左 Control",
-            "Control_R": "右 Control"
+            "ascii_punct": L10n.asciiPunct,
+            "traditionalization": L10n.traditionalization,
+            "emoji": L10n.emoji,
+            "full_shape": L10n.fullShape,
+            "search_single_char": L10n.searchSingleChar,
+            "noop": L10n.noop,
+            "clear": L10n.clear,
+            "commit_code": L10n.commitCode,
+            "commit_text": L10n.commitText,
+            "inline_ascii": L10n.inlineAscii,
+            "Caps_Lock": L10n.capsLock,
+            "Shift_L": L10n.shiftL,
+            "Shift_R": L10n.shiftR,
+            "Control_L": L10n.controlL,
+            "Control_R": L10n.controlR
         ]
 
         if let label = commonLabels[choice] {
@@ -503,6 +595,9 @@ final class RimeConfigManager: ObservableObject {
     }
 
     private func saveFullPatch(in domain: ConfigDomain) {
+        guard rimePath.startAccessingSecurityScopedResource() else { return }
+        defer { rimePath.stopAccessingSecurityScopedResource() }
+
         let patch = patchConfigs[domain] ?? [:]
         let fileName = "\(domain.rawValue).custom.yaml"
         let url = rimePath.appendingPathComponent(fileName)
@@ -519,24 +614,30 @@ final class RimeConfigManager: ObservableObject {
         do {
             let yaml = try Yams.dump(object: root, width: -1, allowUnicode: true, sortKeys: true)
             try yaml.write(to: url, atomically: true, encoding: .utf8)
-            statusMessage = "已更新 \(fileName)"
+            statusMessage = String(format: L10n.updatedFile, fileName)
         } catch {
-            statusMessage = "保存失败：\(error.localizedDescription)"
+            statusMessage = String(format: L10n.saveFailed, error.localizedDescription)
         }
     }
 
     func loadRawYaml(for domain: ConfigDomain) -> String {
+        guard rimePath.startAccessingSecurityScopedResource() else { return "patch:\n" }
+        defer { rimePath.stopAccessingSecurityScopedResource() }
+
         let fileName = "\(domain.rawValue).custom.yaml"
         let url = rimePath.appendingPathComponent(fileName)
         return (try? String(contentsOf: url, encoding: .utf8)) ?? "patch:\n"
     }
 
     func saveRawYaml(_ content: String, for domain: ConfigDomain) {
+        guard rimePath.startAccessingSecurityScopedResource() else { return }
+        defer { rimePath.stopAccessingSecurityScopedResource() }
+
         let fileName = "\(domain.rawValue).custom.yaml"
         let url = rimePath.appendingPathComponent(fileName)
         try? content.write(to: url, atomically: true, encoding: .utf8)
         loadConfig() // Reload to sync UI
-        statusMessage = "已保存 \(fileName)"
+        statusMessage = String(format: L10n.savedFile, fileName)
     }
     private func updateVirtualHotkeyPairs(_ pairs: [[String]], prevAction: String, nextAction: String, in domain: ConfigDomain) {
         let prevHotkeys = pairs.map { $0[0] }
@@ -611,6 +712,9 @@ final class RimeConfigManager: ObservableObject {
     }
 
     private func saveToPatch(_ value: Any, for keyPath: String, in domain: ConfigDomain) {
+        guard rimePath.startAccessingSecurityScopedResource() else { return }
+        defer { rimePath.stopAccessingSecurityScopedResource() }
+
         let fileName = domain == .default ? "default.custom.yaml" : "squirrel.custom.yaml"
         let url = rimePath.appendingPathComponent(fileName)
 
@@ -633,9 +737,9 @@ final class RimeConfigManager: ObservableObject {
             // allowUnicode: true ensures Chinese characters are not escaped
             let yaml = try Yams.dump(object: root, width: -1, allowUnicode: true, sortKeys: true)
             try yaml.write(to: url, atomically: true, encoding: String.Encoding.utf8)
-            statusMessage = "已保存到 \(fileName)"
+            statusMessage = String(format: L10n.savedToFile, fileName)
         } catch {
-            statusMessage = "保存失败：\(error.localizedDescription)"
+            statusMessage = String(format: L10n.saveFailed, error.localizedDescription)
         }
     }
 

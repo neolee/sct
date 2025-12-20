@@ -27,6 +27,7 @@ struct SchemaSection: Decodable, Identifiable, Hashable {
 struct SchemaField: Decodable, Identifiable, Hashable {
     let id: String
     let label: String
+    let description: String?
     let type: SchemaFieldType
     let keyPath: String
     let itemKey: String?
@@ -120,7 +121,7 @@ final class SchemaStore: ObservableObject {
             return
         }
 
-        errorMessage = "ConfigSchema.json 未找到"
+        errorMessage = L10n.schemaNotFound
     }
 
     private func loadSchema(from url: URL) {
@@ -129,7 +130,7 @@ final class SchemaStore: ObservableObject {
             let decoder = JSONDecoder()
             schema = try decoder.decode(ConfigSchema.self, from: data)
         } catch {
-            errorMessage = "Schema 解析失败：\(error.localizedDescription)"
+            errorMessage = String(format: L10n.schemaParseFailed, error.localizedDescription)
         }
     }
 

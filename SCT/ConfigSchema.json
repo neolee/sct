@@ -38,6 +38,7 @@
         {
           "id": "pageSize",
           "label": "候选词个数",
+          "description": "每页显示的候选词数量 (3-10)",
           "type": "stepper",
           "keyPath": "menu/page_size",
           "min": 3,
@@ -61,12 +62,14 @@
         {
           "id": "hotkeys",
           "label": "快捷键",
+          "description": "触发方案选单的全局快捷键",
           "type": "hotkeyList",
           "keyPath": "switcher/hotkeys"
         },
         {
           "id": "saveOptions",
           "label": "记忆选项",
+          "description": "在方案选单中切换后需要记住的状态",
           "type": "multiSelect",
           "keyPath": "switcher/save_options",
           "choices": [
@@ -398,6 +401,7 @@
         {
           "id": "appsTable",
           "label": "应用列表",
+          "description": "为特定应用程序设置输入行为（如在终端中默认使用英文）",
           "type": "appOptions",
           "keyPath": "app_options",
           "columns": [
