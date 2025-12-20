@@ -31,7 +31,7 @@
     },
     {
       "id": "panel.menu",
-      "title": "候选菜单",
+      "title": "面板菜单",
       "icon": "list.number",
       "targetFile": "default",
       "fields": [
@@ -237,7 +237,7 @@
     },
     {
       "id": "style",
-      "title": "候选窗样式",
+      "title": "面板样式",
       "icon": "paintpalette",
       "targetFile": "squirrel",
       "fields": [
@@ -257,7 +257,8 @@
         },
         {
           "id": "candidateLayout",
-          "label": "候选排列",
+          "label": "排列方式",
+          "description": "stack 为竖排，linear 为横排",
           "type": "segmented",
           "keyPath": "style/candidate_list_layout",
           "choices": ["stacked", "linear"]
