@@ -96,7 +96,7 @@ struct ContentView: View {
         case .advanced:
             AdvancedSettingsView(manager: manager)
         case .help:
-            HelpView()
+            HelpView(manager: manager)
         default:
             SchemaDrivenView(schemaStore: schemaStore,
                              manager: manager,

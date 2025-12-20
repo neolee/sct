@@ -110,6 +110,7 @@ struct L10n {
     static let version = "版本 %@"
     static let copyright = "© 2025 Neo. All rights reserved."
     static let checkUpdates = "检查更新..."
+    static let resetAccess = "重置目录授权"
     static let on = "开启"
     static let off = "关闭"
 

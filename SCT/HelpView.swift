@@ -2,6 +2,7 @@ import SwiftUI
 import MarkdownUI
 
 struct HelpView: View {
+    @ObservedObject var manager: RimeConfigManager
     @State private var helpContent: String = L10n.loadingHelp
 
     var body: some View {
@@ -15,7 +16,12 @@ struct HelpView: View {
 
                 VStack(alignment: .leading, spacing: 16) {
                     Button(action: {
-                        NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: "~/Library/Rime".expandingTildeWithFileManager)
+                        let url = manager.rimePath
+                        let isScoped = url.startAccessingSecurityScopedResource()
+                        NSWorkspace.shared.activateFileViewerSelecting([url])
+                        if isScoped {
+                            url.stopAccessingSecurityScopedResource()
+                        }
                     }) {
                         Label(L10n.showInFinder, systemImage: "folder")
                     }
@@ -74,6 +80,13 @@ struct HelpView: View {
                     }
                     .buttonStyle(.link)
                     .font(.caption)
+
+                    Button(L10n.resetAccess) {
+                        manager.resetAccess()
+                    }
+                    .buttonStyle(.link)
+                    .font(.caption)
+                    .foregroundStyle(.red)
                 }
             }
         }
@@ -88,5 +101,5 @@ extension String {
 }
 
 #Preview {
-    HelpView()
+    HelpView(manager: RimeConfigManager())
 }

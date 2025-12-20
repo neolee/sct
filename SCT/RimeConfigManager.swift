@@ -39,9 +39,18 @@ final class RimeConfigManager: ObservableObject {
     private var labelsCache: [String: String] = [:]
 
     private var saveTasks: [String: Task<Void, Never>] = [:]
-    private var rimePath: URL
+    @Published var rimePath: URL
     private let fileManager = FileManager.default
     private let bookmarkKey = "RimeDirectoryBookmark"
+
+    func resetAccess() {
+        UserDefaults.standard.removeObject(forKey: bookmarkKey)
+        self.rimePath = FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent("Library", isDirectory: true)
+            .appendingPathComponent("Rime", isDirectory: true)
+        self.hasAccess = false
+        self.statusMessage = L10n.accessRequired
+    }
 
     private var folderMonitor: DispatchSourceFileSystemObject?
     private var folderDescriptor: Int32 = -1
@@ -69,12 +78,24 @@ final class RimeConfigManager: ObservableObject {
         .appendingPathComponent("Rime", isDirectory: true)) {
         self.rimePath = rimePath
 
-        if loadBookmark() {
-            loadConfig()
+        let bookmarked = loadBookmark()
+        loadConfig()
+
+        if bookmarked || checkActualAccess() {
+            self.hasAccess = true
             startMonitoring()
         } else {
+            self.hasAccess = false
             statusMessage = L10n.accessRequired
         }
+    }
+
+    private func checkActualAccess() -> Bool {
+        let isScoped = rimePath.startAccessingSecurityScopedResource()
+        defer { if isScoped { rimePath.stopAccessingSecurityScopedResource() } }
+
+        var isDir: ObjCBool = false
+        return FileManager.default.fileExists(atPath: rimePath.path, isDirectory: &isDir) && isDir.boolValue && FileManager.default.isReadableFile(atPath: rimePath.path)
     }
 
     func requestAccess() {
@@ -108,6 +129,7 @@ final class RimeConfigManager: ObservableObject {
 
     private func loadBookmark() -> Bool {
         guard let bookmarkData = UserDefaults.standard.data(forKey: bookmarkKey) else {
+            print("DEBUG: No bookmark data found in UserDefaults for key: \(bookmarkKey)")
             return false
         }
 
@@ -119,7 +141,7 @@ final class RimeConfigManager: ObservableObject {
                              bookmarkDataIsStale: &isStale)
 
             if isStale {
-                // Refresh bookmark if stale
+                print("DEBUG: Bookmark is stale, refreshing...")
                 let newBookmarkData = try url.bookmarkData(
                     options: .withSecurityScope,
                     includingResourceValuesForKeys: nil,
@@ -129,10 +151,10 @@ final class RimeConfigManager: ObservableObject {
             }
 
             self.rimePath = url
-            self.hasAccess = true
+            print("DEBUG: Successfully resolved bookmark: \(url.path)")
             return true
         } catch {
-            print("Error resolving bookmark: \(error)")
+            print("DEBUG: Failed to resolve bookmark: \(error.localizedDescription)")
             return false
         }
     }
