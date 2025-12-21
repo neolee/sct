@@ -152,3 +152,9 @@ final class SchemaStore: ObservableObject {
         }
     }
 }
+
+extension SchemaField {
+    var minInt: Int { Int(min ?? 0) }
+    var maxInt: Int { Int(max ?? 100) }
+    var defaultInt: Int { 0 }
+}

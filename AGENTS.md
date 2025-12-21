@@ -201,3 +201,18 @@ Add the following to your repository settings under **Settings > Secrets and var
 - [x] Sparkle 2 integration for auto-updates (2025-12-21).
 - [x] GitHub Actions CI/CD pipeline setup (2025-12-21).
 - [x] Final polish and distribution preparation (2025-12-21).
+
+## Post-1.0.0 Cleanup and Refactoring (2025-12-22)
+
+### 1. Redundancy Removal
+- **RimeConfigManager**: Removed unused `@Published` properties (`pageSize`, `colorScheme`, `fontFace`, `fontPoint`, `schemaList`) and the `AppOption` struct. These were remnants of early prototypes and are now handled dynamically via `mergedConfigs` and `ConfigSchema.json`.
+- **Logic Consolidation**: Deleted `applyMergedValues()` as it was only responsible for syncing the now-removed properties.
+
+### 2. Code Architecture Improvements
+- **Saving Logic**: Extracted `loadPatchRoot` and `savePatchRoot` in `RimeConfigManager` to centralize YAML file operations and reduce duplication between `saveToPatch` and `saveFullPatch`.
+- **UI Bindings**: Implemented a generic `binding(for:domain:defaultValue:)` helper in `SchemaFieldRow` to eliminate repetitive `Binding(get:set:)` boilerplate across different control types.
+- **Model Extensions**: Moved `SchemaField` convenience extensions (`minInt`, `maxInt`, `defaultInt`) from `SchemaDrivenView.swift` to `SchemaStore.swift` to keep model logic closer to the data definition.
+
+### 3. Performance & Robustness
+- **Caching**: Retained `choicesCache` and `labelsCache` but ensured they are cleared appropriately during config reloads.
+- **Type Safety**: Improved `asInt` and `asDouble` helpers to handle `Decimal` types returned by Yams, preventing potential type mismatch crashes.

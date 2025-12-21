@@ -11,12 +11,6 @@ final class RimeConfigManager: ObservableObject {
         case squirrel
     }
 
-    struct AppOption: Identifiable {
-        let id = UUID()
-        let bundleID: String
-        let asciiMode: Bool
-    }
-
     struct RimeSchema: Identifiable, Hashable {
         var id: String { schemaID }
         let schemaID: String
@@ -24,12 +18,7 @@ final class RimeConfigManager: ObservableObject {
         let isBuiltIn: Bool
     }
 
-    @Published var schemaList: [String] = [L10n.loadingSchemas]
     @Published var availableSchemas: [RimeSchema] = []
-    @Published var pageSize: Int = 5
-    @Published var colorScheme: String = "purity_of_form_custom"
-    @Published var fontFace: String = "Avenir"
-    @Published var fontPoint: Int = 16
     @Published var statusMessage: String = L10n.loadingConfig
     @Published var hasAccess: Bool = false
     @Published private(set) var mergedConfigs: [ConfigDomain: [String: Any]] = [:]
@@ -298,7 +287,6 @@ final class RimeConfigManager: ObservableObject {
             mergedConfigs[.squirrel] = mergedDictionary(base: squirrelBase, patch: normalizeRimeDictionary(squirrelPatch))
 
             parseAvailableSchemas()
-            applyMergedValues()
             statusMessage = String(format: L10n.readPath, rimePath.path)
         }
     }
@@ -683,9 +671,6 @@ final class RimeConfigManager: ObservableObject {
         patch[keyPath] = finalValue
         patchConfigs[domain] = patch
 
-        // 2. Sync @Published properties
-        applyMergedValues()
-
         // 3. Save to .custom.yaml (Debounced)
         let taskKey = "\(domain.rawValue)/\(keyPath)"
         saveTasks[taskKey]?.cancel()
@@ -725,26 +710,9 @@ final class RimeConfigManager: ObservableObject {
 
     private func saveFullPatch(in domain: ConfigDomain) {
         withSecurityScopedAccess {
-            let patch = patchConfigs[domain] ?? [:]
-            let fileName = "\(domain.rawValue).custom.yaml"
-            let url = rimePath.appendingPathComponent(fileName)
-
-            var root: [String: Any] = [:]
-            if fileManager.fileExists(atPath: url.path),
-               let contents = try? String(contentsOf: url, encoding: .utf8),
-               let existingRoot = try? Yams.load(yaml: contents) as? [String: Any] {
-                root = existingRoot
-            }
-
-            root["patch"] = patch
-
-            do {
-                let yaml = try Yams.dump(object: root, width: -1, allowUnicode: true, sortKeys: true)
-                try yaml.write(to: url, atomically: true, encoding: .utf8)
-                statusMessage = String(format: L10n.saveSuccess, fileName)
-            } catch {
-                statusMessage = String(format: L10n.saveFailed, error.localizedDescription)
-            }
+            var root = loadPatchRoot(for: domain)
+            root["patch"] = patchConfigs[domain] ?? [:]
+            savePatchRoot(root, for: domain)
         }
     }
 
@@ -826,16 +794,7 @@ final class RimeConfigManager: ObservableObject {
 
     private func saveToPatch(_ value: Any, for keyPath: String, in domain: ConfigDomain) {
         withSecurityScopedAccess {
-            let fileName = domain == .default ? "default.custom.yaml" : "squirrel.custom.yaml"
-            let url = rimePath.appendingPathComponent(fileName)
-
-            var root: [String: Any] = [:]
-            if fileManager.fileExists(atPath: url.path),
-               let contents = try? String(contentsOf: url, encoding: .utf8),
-               let existingRoot = try? Yams.load(yaml: contents) as? [String: Any] {
-                root = existingRoot
-            }
-
+            var root = loadPatchRoot(for: domain)
             var patch = root["patch"] as? [String: Any] ?? [:]
 
             // Use flat keys (e.g., "style/font_face") instead of nested structures.
@@ -843,15 +802,32 @@ final class RimeConfigManager: ObservableObject {
             patch[keyPath] = value
             root["patch"] = patch
 
-            do {
-                // sortKeys: true ensures consistent output order
-                // allowUnicode: true ensures Chinese characters are not escaped
-                let yaml = try Yams.dump(object: root, width: -1, allowUnicode: true, sortKeys: true)
-                try yaml.write(to: url, atomically: true, encoding: String.Encoding.utf8)
-                statusMessage = String(format: L10n.saveSuccess, fileName)
-            } catch {
-                statusMessage = String(format: L10n.saveFailed, error.localizedDescription)
-            }
+            savePatchRoot(root, for: domain)
+        }
+    }
+
+    private func loadPatchRoot(for domain: ConfigDomain) -> [String: Any] {
+        let fileName = "\(domain.rawValue).custom.yaml"
+        let url = rimePath.appendingPathComponent(fileName)
+        if fileManager.fileExists(atPath: url.path),
+           let contents = try? String(contentsOf: url, encoding: .utf8),
+           let existingRoot = try? Yams.load(yaml: contents) as? [String: Any] {
+            return existingRoot
+        }
+        return [:]
+    }
+
+    private func savePatchRoot(_ root: [String: Any], for domain: ConfigDomain) {
+        let fileName = "\(domain.rawValue).custom.yaml"
+        let url = rimePath.appendingPathComponent(fileName)
+        do {
+            // sortKeys: true ensures consistent output order
+            // allowUnicode: true ensures Chinese characters are not escaped
+            let yaml = try Yams.dump(object: root, width: -1, allowUnicode: true, sortKeys: true)
+            try yaml.write(to: url, atomically: true, encoding: .utf8)
+            statusMessage = String(format: L10n.saveSuccess, fileName)
+        } catch {
+            statusMessage = String(format: L10n.saveFailed, error.localizedDescription)
         }
     }
 
@@ -917,38 +893,6 @@ final class RimeConfigManager: ObservableObject {
         return fileManager.fileExists(atPath: url.path)
     }
 
-    private func applyMergedValues() {
-        if let mergedDefault = mergedConfigs[.default] {
-            if let schemas = mergedDefault["schema_list"] as? [[String: Any]] {
-                schemaList = schemas.compactMap { $0["schema"] as? String }
-            } else {
-                schemaList = []
-            }
-
-            if let menu = mergedDefault["menu"] as? [String: Any] {
-                if let size = asInt(menu["page_size"]) {
-                    pageSize = size
-                }
-            } else {
-                pageSize = 5
-            }
-        } else {
-            schemaList = []
-            pageSize = 5
-        }
-
-        if let mergedSquirrel = mergedConfigs[.squirrel] {
-            if let style = mergedSquirrel["style"] as? [String: Any] {
-                colorScheme = style["color_scheme"] as? String ?? colorScheme
-                fontFace = style["font_face"] as? String ?? fontFace
-
-                if let fp = asInt(style["font_point"]) {
-                    fontPoint = fp
-                }
-            }
-        }
-    }
-
     private func asDouble(_ value: Any?) -> Double? {
         if let d = value as? Double { return d }
         if let i = value as? Int { return Double(i) }
@@ -968,7 +912,6 @@ final class RimeConfigManager: ObservableObject {
             let root = try? Yams.load(yaml: Self.fallbackYAML),
             let dictRaw = root as? [String: Any]
         else {
-            schemaList = ["rime_ice"]
             mergedConfigs = [:]
             return
         }
@@ -977,7 +920,6 @@ final class RimeConfigManager: ObservableObject {
 
         mergedConfigs[.default] = dict
         mergedConfigs[.squirrel] = dict
-        applyMergedValues()
     }
 
     // MARK: - Dictionary Normalization

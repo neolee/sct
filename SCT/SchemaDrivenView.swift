@@ -126,36 +126,27 @@ struct SchemaFieldRow: View {
 
         switch field.type {
         case .toggle:
-            Toggle("", isOn: Binding(
-                get: { rawValue as? Bool ?? false },
-                set: { manager.updateValue($0, for: field.keyPath, in: domain) }
-            ))
+            Toggle("", isOn: binding(for: field.keyPath, domain: domain, defaultValue: false))
             .labelsHidden()
 
         case .stepper:
             Stepper(value: Binding(
-                get: { manager.intValue(for: field.keyPath, in: domain) ?? Int(field.defaultInt) },
+                get: { manager.intValue(for: field.keyPath, in: domain) ?? field.defaultInt },
                 set: { manager.updateValue($0, for: field.keyPath, in: domain) }
             ), in: field.minInt...field.maxInt) {
-                Text("\(manager.intValue(for: field.keyPath, in: domain) ?? Int(field.defaultInt))")
+                Text("\(manager.intValue(for: field.keyPath, in: domain) ?? field.defaultInt)")
                     .monospacedDigit()
             }
             .frame(maxWidth: 200, alignment: .trailing)
 
         case .text:
-            TextField(field.label, text: Binding(
-                get: { rawValue as? String ?? "" },
-                set: { manager.updateValue($0, for: field.keyPath, in: domain) }
-            ))
+            TextField(field.label, text: binding(for: field.keyPath, domain: domain, defaultValue: ""))
             .textFieldStyle(.roundedBorder)
             .frame(maxWidth: 200, alignment: .trailing)
 
         case .enumeration:
             let choices = manager.resolveChoices(for: field)
-            Picker("", selection: Binding(
-                get: { rawValue as? String ?? choices.first ?? "" },
-                set: { manager.updateValue($0, for: field.keyPath, in: domain) }
-            )) {
+            Picker("", selection: binding(for: field.keyPath, domain: domain, defaultValue: choices.first ?? "")) {
                 if rawValue == nil {
                     Text(L10n.notSet).tag("")
                 }
@@ -169,10 +160,7 @@ struct SchemaFieldRow: View {
 
         case .segmented:
             let choices = manager.resolveChoices(for: field)
-            Picker("", selection: Binding(
-                get: { rawValue as? String ?? choices.first ?? "" },
-                set: { manager.updateValue($0, for: field.keyPath, in: domain) }
-            )) {
+            Picker("", selection: binding(for: field.keyPath, domain: domain, defaultValue: choices.first ?? "")) {
                 ForEach(choices, id: \.self) { choice in
                     Text(manager.choiceLabel(for: field, choice: choice)).tag(choice)
                 }
@@ -198,10 +186,7 @@ struct SchemaFieldRow: View {
 
         case .fontPicker:
             let fonts = schemaStore.availableFonts
-            Picker("", selection: Binding(
-                get: { rawValue as? String ?? "Avenir" },
-                set: { manager.updateValue($0, for: field.keyPath, in: domain) }
-            )) {
+            Picker("", selection: binding(for: field.keyPath, domain: domain, defaultValue: "Avenir")) {
                 if fonts.isEmpty {
                     Text(L10n.loadingFonts).tag("Avenir")
                 } else {
@@ -240,6 +225,13 @@ struct SchemaFieldRow: View {
                 .font(.callout)
                 .foregroundStyle(.secondary)
         }
+    }
+
+    private func binding<T>(for keyPath: String, domain: RimeConfigManager.ConfigDomain, defaultValue: T) -> Binding<T> {
+        Binding(
+            get: { manager.value(for: keyPath, in: domain) as? T ?? defaultValue },
+            set: { manager.updateValue($0, for: keyPath, in: domain) }
+        )
     }
 }
 
@@ -836,10 +828,4 @@ struct HotkeyPairListControl: View {
         }
         .frame(maxWidth: 450)
     }
-}
-
-extension SchemaField {
-    var minInt: Int { Int(min ?? 0) }
-    var maxInt: Int { Int(max ?? 100) }
-    var defaultInt: Int { 0 } // Could be added to JSON
 }
