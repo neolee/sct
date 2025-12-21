@@ -13,6 +13,7 @@ struct L10n {
     static let selectItem = "请选择一个项目"
     static let sctWebsite = "SCT 官网"
     static let squirrelWebsite = "Squirrel 官网"
+    static let checkForUpdates = "检查更新..."
 
     // Status Messages
     static let loadingConfig = "正在读取配置..."

@@ -113,6 +113,64 @@ The "Advanced Settings" tab is designed as a **Smart Configuration Browser** to 
 - **Technical String Reversion**: Reverted `key_binder` related strings (`when`, `accept`, `always`, `composing`, etc.) to their technical English terms in `L10n.swift`. This maintains consistency with Rime's engine terminology and official documentation, as these are considered "special key names" rather than user-facing labels.
 - **Placeholder Retention**: Decided to retain `KeyBinderControl` in `SchemaDrivenView.swift` as a placeholder for future complex shortcut management features, even though it is currently unused by `ConfigSchema.json`.
 
+## Distribution & Update Strategy (Finalized 2025-12-21)
+
+### 1. Core Stack
+- **Hosting**: GitHub Releases (for binaries and metadata).
+- **Update Engine**: [Sparkle 2](https://sparkle-project.org/).
+- **Automation**: GitHub Actions.
+
+### 2. Release Workflow
+1. **Trigger**: Developer pushes a git tag (e.g., `v1.0.0`).
+2. **Build**: GitHub Actions runner builds the project using `xcodebuild`.
+3. **Sign & Notarize**: 
+   - Sign with Apple Developer ID Certificate.
+   - Notarize using `notarytool` to ensure macOS allows execution.
+4. **Package**: Create a DMG using `create-dmg`.
+5. **Metadata**: Generate/Update `appcast.xml` with the new version's signature and download URL.
+6. **Publish**: Upload DMG and `appcast.xml` to the GitHub Release.
+
+### 3. Setup Instructions for Developer
+
+#### A. Xcode Project Setup
+1. **Add Sparkle**: Add `https://github.com/sparkle-project/Sparkle` as a Swift Package dependency.
+2. **Info.plist Keys**: Add the following keys to your target's "Info" tab or `Info.plist`:
+   - `SUFeedURL`: `https://raw.githubusercontent.com/YOUR_USERNAME/sct/main/appcast.xml` (Replace with your actual repo path).
+   - `SUPublicEDKey`: (The public key generated in step B).
+3. **Hardened Runtime**: Ensure "Hardened Runtime" is enabled in "Signing & Capabilities".
+
+#### B. Sparkle Keys
+1. Download the Sparkle distribution and run `./bin/generate_keys` to generate `ed25519` keys.
+2. Copy the **Public Key** to the `SUPublicEDKey` in Xcode.
+3. Keep the **Private Key** secure (it will be needed in GitHub Secrets).
+
+#### C. Certificate & Provisioning
+1. Go to [Apple Developer Portal](https://developer.apple.com/account/resources/certificates/list).
+2. Create a **Developer ID Application** certificate.
+3. Download and install it in your Keychain.
+4. In Xcode, under "Signing & Capabilities", select your Team and ensure "Developer ID" is selected for the Release configuration.
+
+#### D. GitHub Secrets
+Add the following to your repository settings under **Settings > Secrets and variables > Actions**:
+
+1.  **`CERTIFICATE_P12`**:
+    - **获取方式**: 在 Mac 上打开“钥匙串访问” (Keychain Access)，找到你的 **Developer ID Application** 证书。
+    - **关键步骤**: 点击证书左侧的箭头展开，**同时选中证书及其下方的专用密钥 (Private Key)**。
+    - **导出**: 右键点击 -> 导出 (Export)，此时即可选择 `.p12` 格式。保存并设置一个导出密码。
+    - **编码**: 在终端运行 `base64 -i YourCert.p12 | pbcopy`，将剪贴板中的 Base64 字符串粘贴到 Secret 中。
+2.  **`CERTIFICATE_PASSWORD`**: 导出 `.p12` 文件时设置的密码。
+3.  **`KEYCHAIN_PASSWORD`**: 任意随机字符串（用于 CI 环境中临时创建的钥匙串，例如 `openssl rand -base64 12`）。
+4.  **`APPLE_ID`**: 你的 Apple ID 邮箱地址。
+5.  **`APPLE_PASSWORD`**: 
+    - **获取方式**: 登录 [appleid.apple.com](https://appleid.apple.com)。
+    - **生成**: 在“App 专用密码” (App-Specific Passwords) 栏目下点击“生成”，获取一个形如 `xxxx-xxxx-xxxx-xxxx` 的密码。
+6.  **`TEAM_ID`**: 
+    - **获取方式**: 登录 [developer.apple.com/account](https://developer.apple.com/account)。
+    - **查看**: 在页面下方的 **Membership Details** 中找到 **Team ID** (10位字母数字组合)。
+7.  **`SPARKLE_PRIVATE_KEY`**:
+    - **获取方式**: 运行 Sparkle 工具包中的 `./bin/generate_keys`。
+    - **查看**: 该命令会输出 `Private key` 和 `Public key`。将 `Private key` 的内容完整复制到此 Secret 中。
+
 ## Plan and Progress
 - [x] Initial project scaffolding (2025-12-18).
 - [x] Basic `RimeConfigManager` structure for YAML handling (2025-12-18).
@@ -135,5 +193,7 @@ The "Advanced Settings" tab is designed as a **Smart Configuration Browser** to 
 - [x] Markdown-based Help system: Refactored `HelpView` to load content from an external `Help.md` file for easier maintenance (2025-12-20).
 - [x] Fix Markdown rendering: Integrated `MarkdownUI` library for professional rendering of headers, lists, and GitHub Flavored Markdown (2025-12-20).
 - [x] Configuration backup strategy and mechanism (2025-12-21).
-- [ ] Auto update mechanism for SCT itself.
+- [x] Undo/Redo capability (2025-12-21).
+- [x] Sparkle 2 integration for auto-updates (2025-12-21).
+- [x] GitHub Actions CI/CD pipeline setup (2025-12-21).
 - [ ] Final polish and distribution preparation.

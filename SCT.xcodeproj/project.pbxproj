@@ -9,15 +9,29 @@
 /* Begin PBXBuildFile section */
 		B5AF88462EF3F1F2000868B9 /* Yams in Frameworks */ = {isa = PBXBuildFile; productRef = B5AF88452EF3F1F2000868B9 /* Yams */; };
 		B5AF88462EF3F1F2000868BA /* MarkdownUI in Frameworks */ = {isa = PBXBuildFile; productRef = B5AF88452EF3F1F2000868BA /* MarkdownUI */; };
+		B5FD97A82EF7E9E4009CE14D /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = B5FD97A72EF7E9E4009CE14D /* Sparkle */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		B5AF88362EF3F059000868B9 /* SCT.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SCT.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		B5FD97AA2EF7EE94009CE14D /* Exceptions for "SCT" folder in "SCT" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = B5AF88352EF3F059000868B9 /* SCT */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		B5AF88382EF3F059000868B9 /* SCT */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				B5FD97AA2EF7EE94009CE14D /* Exceptions for "SCT" folder in "SCT" target */,
+			);
 			path = SCT;
 			sourceTree = "<group>";
 		};
@@ -28,6 +42,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				B5FD97A82EF7E9E4009CE14D /* Sparkle in Frameworks */,
 				B5AF88462EF3F1F2000868BA /* MarkdownUI in Frameworks */,
 				B5AF88462EF3F1F2000868B9 /* Yams in Frameworks */,
 			);
@@ -82,6 +97,7 @@
 			packageProductDependencies = (
 				B5AF88452EF3F1F2000868BA /* MarkdownUI */,
 				B5AF88452EF3F1F2000868B9 /* Yams */,
+				B5FD97A72EF7E9E4009CE14D /* Sparkle */,
 			);
 			productName = SCT;
 			productReference = B5AF88362EF3F059000868B9 /* SCT.app */;
@@ -114,6 +130,7 @@
 			packageReferences = (
 				B5AF88472EF3F1F2000868BA /* XCRemoteSwiftPackageReference "swift-markdown-ui" */,
 				B5AF88472EF3F1F2000868B9 /* XCRemoteSwiftPackageReference "Yams" */,
+				B5FD97A62EF7E9E4009CE14D /* XCRemoteSwiftPackageReference "Sparkle" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = B5AF88372EF3F059000868B9 /* Products */;
@@ -287,11 +304,14 @@
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readwrite;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = SCT/Info.plist;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
+				MACOSX_DEPLOYMENT_TARGET = 14.6;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = net.paradigmx.SCT;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -322,11 +342,14 @@
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readwrite;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = SCT/Info.plist;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
+				MACOSX_DEPLOYMENT_TARGET = 14.6;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = net.paradigmx.SCT;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -380,6 +403,14 @@
 				minimumVersion = 2.4.1;
 			};
 		};
+		B5FD97A62EF7E9E4009CE14D /* XCRemoteSwiftPackageReference "Sparkle" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/sparkle-project/Sparkle";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.8.1;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -392,6 +423,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = B5AF88472EF3F1F2000868BA /* XCRemoteSwiftPackageReference "swift-markdown-ui" */;
 			productName = MarkdownUI;
+		};
+		B5FD97A72EF7E9E4009CE14D /* Sparkle */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = B5FD97A62EF7E9E4009CE14D /* XCRemoteSwiftPackageReference "Sparkle" */;
+			productName = Sparkle;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

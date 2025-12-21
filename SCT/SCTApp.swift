@@ -10,6 +10,7 @@ import SwiftUI
 @main
 struct SCTApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
+    @StateObject private var updaterViewModel = UpdaterViewModel()
 
     var body: some Scene {
         WindowGroup {
@@ -20,6 +21,13 @@ struct SCTApp: App {
             CommandGroup(replacing: .newItem) { }
             CommandGroup(replacing: .saveItem) { }
             CommandGroup(replacing: .pasteboard) { }
+
+            CommandGroup(after: .appInfo) {
+                Button(L10n.checkForUpdates) {
+                    updaterViewModel.checkForUpdates()
+                }
+                .disabled(!updaterViewModel.canCheckForUpdates)
+            }
 
             CommandGroup(replacing: .help) {
                 Button(L10n.sctWebsite) {
