@@ -8,6 +8,8 @@ on:
 jobs:
   build:
     runs-on: macos-latest
+    permissions:
+      contents: write
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -80,20 +82,38 @@ jobs:
             "SCT.dmg" \
             "build/Export/SCT.app"
 
+      - name: Cache Sparkle Tools
+        uses: actions/cache@v3
+        with:
+          path: sparkle_tools/bin/generate_appcast
+          key: sparkle-tools-2.8.1
+
       - name: Generate Sparkle Metadata
-        env:
-          SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
         run: |
-          # Assuming Sparkle's generate_appcast tool is available or we use a script
-          # For simplicity, we'll use a placeholder or a simple script to update appcast.xml
-          echo "Generating appcast.xml..."
-          # You would typically use Sparkle's generate_appcast tool here
+          if [ ! -f ./sparkle_tools/bin/generate_appcast ]; then
+            mkdir -p sparkle_tools
+            curl -L https://github.com/sparkle-project/Sparkle/releases/download/2.8.1/Sparkle-2.8.1.tar.xz -o sparkle.tar.xz
+            tar -xJf sparkle.tar.xz -C ./sparkle_tools ./bin/generate_appcast
+          fi
+
+          echo "${{ secrets.SPARKLE_PRIVATE_KEY }}" | ./sparkle_tools/bin/generate_appcast \
+            --ed-key-file - \
+            --link "https://github.com/neolee/sct" \
+            --download-url-prefix "https://github.com/neolee/sct/releases/download/${{ github.ref_name }}/" \
+            .
+
+      - name: Commit and Push appcast.xml
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add appcast.xml
+          git commit -m "ci: update appcast.xml for ${{ github.ref_name }} [skip ci]" || echo "No changes to appcast.xml"
+          git push origin HEAD:main
 
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
           files: |
             SCT.dmg
-            appcast.xml
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -3,7 +3,7 @@
 <plist version="1.0">
 <dict>
 	<key>SUFeedURL</key>
-	<string>https://raw.githubusercontent.com/neolee/sct/refs/heads/main/appcast.xml</string>
+	<string>https://raw.githubusercontent.com/neolee/sct/main/appcast.xml</string>
 	<key>SUPublicEDKey</key>
 	<string>BZtiGDw/HAT1SMdwFHzZLmI9ajiab+jWmb4EqGAF6lE=</string>
 </dict>
