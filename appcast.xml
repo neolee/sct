@@ -1,0 +1,15 @@
+<?xml version="1.0" standalone="yes"?>
+<rss xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" version="2.0">
+    <channel>
+        <title>SCT</title>
+        <item>
+            <title>1.0.0</title>
+            <pubDate>Sun, 21 Dec 2025 16:47:16 +0000</pubDate>
+            <link>https://github.com/neolee/sct</link>
+            <sparkle:version>1</sparkle:version>
+            <sparkle:shortVersionString>1.0.0</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.6</sparkle:minimumSystemVersion>
+            <enclosure url="https://github.com/neolee/sct/releases/download/v1.0.0/SCT.dmg" length="1785146" type="application/octet-stream" sparkle:edSignature="ZaOwQKKV7To2J9b49nH2LhhkSETdOFhRWWHR3FY6j3VO6XRanAvA643YIo4Ve4HXt+AjI8MHDb+xyu2sfXHAAg=="/>
+        </item>
+    </channel>
+</rss>
