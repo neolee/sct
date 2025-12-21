@@ -140,6 +140,7 @@ struct SchemaFieldRow: View {
                 Text("\(manager.intValue(for: field.keyPath, in: domain) ?? Int(field.defaultInt))")
                     .monospacedDigit()
             }
+            .frame(maxWidth: 200, alignment: .trailing)
 
         case .text:
             TextField(field.label, text: Binding(
@@ -147,7 +148,7 @@ struct SchemaFieldRow: View {
                 set: { manager.updateValue($0, for: field.keyPath, in: domain) }
             ))
             .textFieldStyle(.roundedBorder)
-            .frame(maxWidth: 200)
+            .frame(maxWidth: 200, alignment: .trailing)
 
         case .enumeration:
             let choices = manager.resolveChoices(for: field)
@@ -164,6 +165,7 @@ struct SchemaFieldRow: View {
             }
             .pickerStyle(.menu)
             .labelsHidden()
+            .frame(maxWidth: 200, alignment: .trailing)
 
         case .segmented:
             let choices = manager.resolveChoices(for: field)
@@ -177,6 +179,7 @@ struct SchemaFieldRow: View {
             }
             .pickerStyle(.segmented)
             .labelsHidden()
+            .frame(maxWidth: 200, alignment: .trailing)
 
         case .slider:
             SliderControl(field: field, domain: domain, manager: manager)
@@ -209,7 +212,7 @@ struct SchemaFieldRow: View {
             }
             .pickerStyle(.menu)
             .labelsHidden()
-            .frame(maxWidth: 200)
+            .frame(maxWidth: 200, alignment: .trailing)
 
         case .multiSelect:
             MultiSelectControl(field: field, domain: domain, manager: manager)
@@ -261,7 +264,7 @@ struct SliderControl: View {
                 .foregroundStyle(.secondary)
                 .frame(width: 44)
         }
-        .frame(maxWidth: 200)
+        .frame(maxWidth: 200, alignment: .trailing)
         .onAppear {
             localValue = manager.doubleValue(for: field.keyPath, in: domain) ?? field.min ?? 0
         }
@@ -631,7 +634,7 @@ struct KeyMappingControl: View {
         let keys = field.keys ?? []
         let choices = field.choices ?? []
 
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .trailing, spacing: 8) {
             ForEach(keys, id: \.self) { key in
                 HStack {
                     Text(manager.choiceLabel(for: field, choice: key))
@@ -651,7 +654,7 @@ struct KeyMappingControl: View {
                     }
                     .pickerStyle(.menu)
                     .labelsHidden()
-                    .frame(maxWidth: 150)
+                    .frame(maxWidth: 150, alignment: .trailing)
                 }
             }
         }

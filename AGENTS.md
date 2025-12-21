@@ -127,17 +127,21 @@ The "Advanced Settings" tab is designed as a **Smart Configuration Browser** to 
    - Sign with Apple Developer ID Certificate.
    - Notarize using `notarytool` to ensure macOS allows execution.
 4. **Package**: Create a DMG using `create-dmg`.
-5. **Metadata**: Generate/Update `appcast.xml` with the new version's signature and download URL.
-6. **Publish**: Upload DMG and `appcast.xml` to the GitHub Release.
+5. **Metadata**: Generate/Update `appcast.xml` using Sparkle's `generate_appcast` tool. The tool is configured to use the GitHub Release download URL as the prefix.
+6. **Sync**: Automatically commit and push the updated `appcast.xml` back to the `main` branch.
+7. **Publish**: Upload the DMG to the GitHub Release. (Note: `appcast.xml` is served via GitHub Raw from the `main` branch, not as a release asset).
 
 ### 3. Setup Instructions for Developer
 
 #### A. Xcode Project Setup
 1. **Add Sparkle**: Add `https://github.com/sparkle-project/Sparkle` as a Swift Package dependency.
 2. **Info.plist Keys**: Add the following keys to your target's "Info" tab or `Info.plist`:
-   - `SUFeedURL`: `https://raw.githubusercontent.com/YOUR_USERNAME/sct/main/appcast.xml` (Replace with your actual repo path).
+   - `SUFeedURL`: `https://raw.githubusercontent.com/YOUR_USERNAME/sct/main/appcast.xml` (Points to the file in your `main` branch).
    - `SUPublicEDKey`: (The public key generated in step B).
 3. **Hardened Runtime**: Ensure "Hardened Runtime" is enabled in "Signing & Capabilities".
+4. **Sandbox Entitlements**: For Sparkle to work within the App Sandbox, add the following to `SCT.entitlements`:
+   - `com.apple.security.network.client`: `true` (To check for updates).
+   - `com.apple.security.temporary-exception.mach-lookup.global-name`: An array containing `$(PRODUCT_BUNDLE_IDENTIFIER)-spks` and `$(PRODUCT_BUNDLE_IDENTIFIER)-spki` (Required for Sparkle's inter-process communication).
 
 #### B. Sparkle Keys
 1. Download the Sparkle distribution and run `./bin/generate_keys` to generate `ed25519` keys.
@@ -196,4 +200,4 @@ Add the following to your repository settings under **Settings > Secrets and var
 - [x] Undo/Redo capability (2025-12-21).
 - [x] Sparkle 2 integration for auto-updates (2025-12-21).
 - [x] GitHub Actions CI/CD pipeline setup (2025-12-21).
-- [ ] Final polish and distribution preparation.
+- [x] Final polish and distribution preparation (2025-12-21).
