@@ -6,5 +6,9 @@
 	<string>https://raw.githubusercontent.com/neolee/sct/main/appcast.xml</string>
 	<key>SUPublicEDKey</key>
 	<string>BZtiGDw/HAT1SMdwFHzZLmI9ajiab+jWmb4EqGAF6lE=</string>
+	<key>SUEnableInstallerLauncherService</key>
+	<true/>
+	<key>SUEnableDownloaderService </key>
+	<false/>
 </dict>
 </plist>
