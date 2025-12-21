@@ -55,6 +55,7 @@ struct ContentView: View {
     @StateObject private var manager = RimeConfigManager()
     @StateObject private var schemaStore = SchemaStore()
     @State private var selection: SidebarItem? = .schemes
+    @Environment(\.undoManager) var undoManager
 
     var body: some View {
         NavigationSplitView {
@@ -85,8 +86,12 @@ struct ContentView: View {
                 .padding(.bottom, 8)
         }
         .task {
+            manager.undoManager = undoManager
             manager.reload()
             schemaStore.loadSchema()
+        }
+        .onChange(of: undoManager) { _, newValue in
+            manager.undoManager = newValue
         }
     }
 

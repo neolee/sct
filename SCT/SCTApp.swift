@@ -19,7 +19,6 @@ struct SCTApp: App {
             // Remove unnecessary menu items
             CommandGroup(replacing: .newItem) { }
             CommandGroup(replacing: .saveItem) { }
-            CommandGroup(replacing: .undoRedo) { }
             CommandGroup(replacing: .pasteboard) { }
 
             CommandGroup(replacing: .help) {

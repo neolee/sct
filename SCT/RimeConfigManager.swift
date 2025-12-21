@@ -35,6 +35,12 @@ final class RimeConfigManager: ObservableObject {
     @Published private(set) var mergedConfigs: [ConfigDomain: [String: Any]] = [:]
     @Published private(set) var patchConfigs: [ConfigDomain: [String: Any]] = [:]
 
+    // Data Safety & Undo
+    var undoManager: UndoManager?
+    private var isDirty = false
+    private var hasCreatedSessionBackup = false
+    private let maxBackups = 20
+
     private var choicesCache: [String: [String]] = [:]
     private var labelsCache: [String: String] = [:]
 
@@ -125,6 +131,8 @@ final class RimeConfigManager: ObservableObject {
                 UserDefaults.standard.set(bookmarkData, forKey: self.bookmarkKey)
                 self.rimePath = url
                 self.hasAccess = true
+                self.hasCreatedSessionBackup = false
+                self.isDirty = false
                 self.loadConfig()
                 self.startMonitoring()
             } catch {
@@ -196,7 +204,76 @@ final class RimeConfigManager: ObservableObject {
         }
     }
 
+    private func createBackup(reason: String) {
+        withSecurityScopedAccess {
+            let backupsRoot = rimePath.appendingPathComponent(".sct", isDirectory: true)
+                .appendingPathComponent("backups", isDirectory: true)
+
+            let timestamp = ISO8601DateFormatter().string(from: Date())
+                .replacingOccurrences(of: ":", with: "-")
+                .replacingOccurrences(of: "Z", with: "")
+
+            let folderName = "\(timestamp)_\(reason)"
+            let currentBackupDir = backupsRoot.appendingPathComponent(folderName, isDirectory: true)
+
+            do {
+                try fileManager.createDirectory(at: currentBackupDir, withIntermediateDirectories: true)
+
+                let filesToBackup = ["default.custom.yaml", "squirrel.custom.yaml"]
+                var backedUpAny = false
+
+                for fileName in filesToBackup {
+                    let sourceURL = rimePath.appendingPathComponent(fileName)
+                    if fileManager.fileExists(atPath: sourceURL.path) {
+                        let destURL = currentBackupDir.appendingPathComponent(fileName)
+                        try fileManager.copyItem(at: sourceURL, to: destURL)
+                        backedUpAny = true
+                    }
+                }
+
+                // If no files were backed up, remove the empty folder
+                if !backedUpAny {
+                    try fileManager.removeItem(at: currentBackupDir)
+                } else {
+                    rotateBackups()
+                }
+            } catch {
+                print("Backup failed: \(error)")
+            }
+        }
+    }
+
+    private func rotateBackups() {
+        withSecurityScopedAccess {
+            let backupsRoot = rimePath.appendingPathComponent(".sct", isDirectory: true)
+                .appendingPathComponent("backups", isDirectory: true)
+
+            guard let items = try? fileManager.contentsOfDirectory(at: backupsRoot, includingPropertiesForKeys: [.isDirectoryKey, .creationDateKey]) else { return }
+
+            // Only rotate directories
+            let folders = items.filter { (try? $0.resourceValues(forKeys: [.isDirectoryKey]))?.isDirectory == true }
+
+            let sortedFolders = folders.sorted { url1, url2 in
+                let date1 = (try? url1.resourceValues(forKeys: [.creationDateKey]))?.creationDate ?? Date.distantPast
+                let date2 = (try? url2.resourceValues(forKeys: [.creationDateKey]))?.creationDate ?? Date.distantPast
+                return date1 < date2
+            }
+
+            if sortedFolders.count > maxBackups {
+                let toDelete = sortedFolders.count - maxBackups
+                for i in 0..<toDelete {
+                    try? fileManager.removeItem(at: sortedFolders[i])
+                }
+            }
+        }
+    }
+
     func loadConfig() {
+        if !hasCreatedSessionBackup && hasAccess {
+            createBackup(reason: "session_start")
+            hasCreatedSessionBackup = true
+        }
+
         withSecurityScopedAccess {
             choicesCache.removeAll()
             labelsCache.removeAll()
@@ -282,6 +359,10 @@ final class RimeConfigManager: ObservableObject {
     }
 
     func addNewSchema(id: String, name: String) {
+        if !isDirty && hasAccess {
+            createBackup(reason: "first_change")
+            isDirty = true
+        }
         withSecurityScopedAccess {
             let fileName = "\(id).schema.yaml"
             let url = rimePath.appendingPathComponent(fileName)
@@ -305,6 +386,10 @@ final class RimeConfigManager: ObservableObject {
     }
 
     func deleteSchema(id: String) {
+        if !isDirty && hasAccess {
+            createBackup(reason: "first_change")
+            isDirty = true
+        }
         withSecurityScopedAccess {
             let fileName = "\(id).schema.yaml"
             let url = rimePath.appendingPathComponent(fileName)
@@ -339,6 +424,7 @@ final class RimeConfigManager: ObservableObject {
 
     /// Triggers Squirrel to reload its configuration.
     func deploy() {
+        isDirty = false
         let squirrelAppPath = "/Library/Input Methods/Squirrel.app/Contents/MacOS/Squirrel"
         let process = Process()
         process.executableURL = URL(fileURLWithPath: squirrelAppPath)
@@ -528,6 +614,22 @@ final class RimeConfigManager: ObservableObject {
     }
 
     func updateValue(_ value: Any, for keyPath: String, in domain: ConfigDomain) {
+        // Register Undo
+        let oldValue = patchConfigs[domain]?[keyPath]
+        undoManager?.registerUndo(withTarget: self) { target in
+            if let old = oldValue {
+                target.updateValue(old, for: keyPath, in: domain)
+            } else {
+                target.removePatch(for: keyPath, in: domain)
+            }
+        }
+
+        // First-Change Backup
+        if !isDirty && hasAccess {
+            createBackup(reason: "first_change")
+            isDirty = true
+        }
+
         var finalValue = value
 
         // Handle virtual keypaths for key_binder
@@ -596,6 +698,19 @@ final class RimeConfigManager: ObservableObject {
         }
     }
     func removePatch(for keyPath: String, in domain: ConfigDomain) {
+        // Register Undo
+        if let oldValue = patchConfigs[domain]?[keyPath] {
+            undoManager?.registerUndo(withTarget: self) { target in
+                target.updateValue(oldValue, for: keyPath, in: domain)
+            }
+        }
+
+        // First-Change Backup
+        if !isDirty && hasAccess {
+            createBackup(reason: "first_change")
+            isDirty = true
+        }
+
         // 1. Update patchConfigs
         var patch = patchConfigs[domain] ?? [:]
         patch.removeValue(forKey: keyPath)
@@ -642,6 +757,18 @@ final class RimeConfigManager: ObservableObject {
     }
 
     func saveRawYaml(_ content: String, for domain: ConfigDomain) {
+        // Register Undo
+        let oldContent = loadRawYaml(for: domain)
+        undoManager?.registerUndo(withTarget: self) { target in
+            target.saveRawYaml(oldContent, for: domain)
+        }
+
+        // First-Change Backup
+        if !isDirty && hasAccess {
+            createBackup(reason: "first_change")
+            isDirty = true
+        }
+
         withSecurityScopedAccess {
             let fileName = "\(domain.rawValue).custom.yaml"
             let url = rimePath.appendingPathComponent(fileName)

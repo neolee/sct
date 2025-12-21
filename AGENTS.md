@@ -134,6 +134,6 @@ The "Advanced Settings" tab is designed as a **Smart Configuration Browser** to 
 - [x] UI String Consolidation: Created `L10n.swift` to centralize static UI strings and moved Help content to `Help.md` (2025-12-20).
 - [x] Markdown-based Help system: Refactored `HelpView` to load content from an external `Help.md` file for easier maintenance (2025-12-20).
 - [x] Fix Markdown rendering: Integrated `MarkdownUI` library for professional rendering of headers, lists, and GitHub Flavored Markdown (2025-12-20).
-- [ ] Configuration backup strategy and mechanism.
+- [x] Configuration backup strategy and mechanism (2025-12-21).
 - [ ] Auto update mechanism for SCT itself.
 - [ ] Final polish and distribution preparation.
