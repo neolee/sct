@@ -109,12 +109,14 @@
         {
           "id": "capsLockMode",
           "label": "保持 Caps Lock 原功能",
+          "description": "勾选此项后 Caps Lock 键用于切换大写锁定，否则用于切换中英文输入状态",
           "type": "toggle",
           "keyPath": "ascii_composer/good_old_caps_lock"
         },
         {
           "id": "switchKeyMap",
           "label": "切换按键设置",
+          "description": "切换到英文模式前的行为，‘行内英文’会在回车输入英文后切回中文模式",
           "type": "keyMapping",
           "keyPath": "ascii_composer/switch_key",
           "choices": [
