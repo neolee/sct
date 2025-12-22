@@ -26,7 +26,7 @@ SCT 是专为 macOS 上的 [鼠须管 (Squirrel)](https://github.com/rime/squirr
 
 1. 为什么我的更改没有生效？
 
-   在 SCT 中保存更改后，您需要点击工具栏上的“部署”按钮（或使用快捷键 `Cmd+R`），这会触发 Squirrel 重新加载配置。
+   在 SCT 中修改配置后，您需要点击工具栏上的“部署”按钮（或使用快捷键 `Cmd+R`），这会触发 Squirrel 重新加载配置。
 
 2. 如何添加新的输入方案？
 
@@ -42,7 +42,7 @@ SCT 是专为 macOS 上的 [鼠须管 (Squirrel)](https://github.com/rime/squirr
 
 5. 沙盒访问权限
 
-   SCT 会读写你的 Squirrel 配置文件，它们通常位于 `~/Library/Rime` 目录下；为了安全地访问 `~/Library/Rime` 目录，SCT 需要您的授权；如果您移动了 Rime 目录，可以在此处重新授权。
+   SCT 会读写你的 Squirrel 配置文件，它们通常位于 `~/Library/Rime` 目录下；为了安全地访问 `~/Library/Rime` 目录，SCT 需要您的授权；如果您移动了 Rime 目录，可以在“帮助”页面重置授权。
 
 ## 致谢
 
