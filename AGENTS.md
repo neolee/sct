@@ -216,3 +216,6 @@ Add the following to your repository settings under **Settings > Secrets and var
 ### 3. Performance & Robustness
 - **Caching**: Retained `choicesCache` and `labelsCache` but ensured they are cleared appropriately during config reloads.
 - **Type Safety**: Improved `asInt` and `asDouble` helpers to handle `Decimal` types returned by Yams, preventing potential type mismatch crashes.
+
+### 4. CI/CD Pipeline Enhancements
+- **Build With Latest SDK**: force GitHub use `macos-26` runner to ensure compatibility with the latest macOS SDK.
