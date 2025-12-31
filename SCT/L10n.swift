@@ -127,7 +127,7 @@ struct L10n {
     static let showInFinder = "在 Finder 中显示 Rime 目录"
     static let helpLoadError = "无法加载帮助文档。"
     static let version = "版本 %@"
-    static let copyright = "© 2025 Neo. All rights reserved."
+    static let copyright = "© 2026 Neo. All rights reserved."
     static let checkUpdates = "检查更新..."
     static let resetAccess = "重置目录授权"
     static let on = "开启"
