@@ -3,6 +3,15 @@
     <channel>
         <title>SCT</title>
         <item>
+            <title>1.0.3</title>
+            <pubDate>Mon, 19 Jan 2026 16:15:05 +0000</pubDate>
+            <link>https://github.com/neolee/sct</link>
+            <sparkle:version>4</sparkle:version>
+            <sparkle:shortVersionString>1.0.3</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.6</sparkle:minimumSystemVersion>
+            <enclosure url="https://github.com/neolee/sct/releases/download/v1.0.3/SCT.dmg" length="2643172" type="application/octet-stream" sparkle:edSignature="MfedLf3kUEJ1Psql7goo0KgZfiNXa09/vIWHT1Uob83eA8GI1pGGS5SKNGwG58eZY9gg8HboFNPPksKiucDbBQ=="/>
+        </item>
+        <item>
             <title>1.0.2</title>
             <pubDate>Tue, 23 Dec 2025 05:44:35 +0000</pubDate>
             <link>https://github.com/neolee/sct</link>
@@ -19,15 +28,6 @@
             <sparkle:shortVersionString>1.0.1</sparkle:shortVersionString>
             <sparkle:minimumSystemVersion>14.6</sparkle:minimumSystemVersion>
             <enclosure url="https://github.com/neolee/sct/releases/download/v1.0.1/SCT.dmg" length="1785465" type="application/octet-stream" sparkle:edSignature="8B5DkvQHNazvk6iUN2/0i58vqUMtMxqnXXaHJNprP5chlVpNHYFNdoAF4V/07UhW/wVdkYXFoMJkrdnV6YF7Cw=="/>
-        </item>
-        <item>
-            <title>1.0.0</title>
-            <pubDate>Sun, 21 Dec 2025 16:47:16 +0000</pubDate>
-            <link>https://github.com/neolee/sct</link>
-            <sparkle:version>1</sparkle:version>
-            <sparkle:shortVersionString>1.0.0</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.6</sparkle:minimumSystemVersion>
-            <enclosure url="https://github.com/neolee/sct/releases/download/v1.0.0/SCT.dmg" length="1785146" type="application/octet-stream" sparkle:edSignature="ZaOwQKKV7To2J9b49nH2LhhkSETdOFhRWWHR3FY6j3VO6XRanAvA643YIo4Ve4HXt+AjI8MHDb+xyu2sfXHAAg=="/>
         </item>
     </channel>
 </rss>
