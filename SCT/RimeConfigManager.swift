@@ -413,19 +413,16 @@ final class RimeConfigManager: ObservableObject {
     /// Triggers Squirrel to reload its configuration.
     func deploy() {
         isDirty = false
-        let squirrelAppPath = "/Library/Input Methods/Squirrel.app/Contents/MacOS/Squirrel"
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: squirrelAppPath)
-        process.arguments = ["--reload"]
 
-        do {
-            try process.run()
-            statusMessage = L10n.deployTriggered
-        } catch {
-            // Fallback: touch the config files if the app is not found or fails
-            statusMessage = L10n.deployFailed
-            touchConfigFiles()
-        }
+        // Post Distributed Notification to trigger Squirrel's reload.
+        DistributedNotificationCenter.default().postNotificationName(
+            NSNotification.Name("SquirrelReloadNotification"),
+            object: nil,
+            userInfo: nil,
+            deliverImmediately: true
+        )
+
+        statusMessage = L10n.deployTriggered
     }
 
     private func touchConfigFiles() {
