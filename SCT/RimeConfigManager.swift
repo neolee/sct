@@ -833,6 +833,13 @@ final class RimeConfigManager: ObservableObject {
 
     private func flattenDictionary(_ dict: [String: Any], prefix: String = "") -> [String: Any] {
         var flat: [String: Any] = [:]
+
+        // If this dictionary is empty, it's a leaf node. We must preserve it (e.g., an empty app_options entry)
+        if dict.isEmpty && !prefix.isEmpty {
+            flat[prefix] = dict
+            return flat
+        }
+
         for (key, value) in dict {
             let fullKey = prefix.isEmpty ? key : "\(prefix)/\(key)"
             if let subDict = value as? [String: Any] {
