@@ -18,7 +18,7 @@
             <sparkle:version>4</sparkle:version>
             <sparkle:shortVersionString>1.0.3</sparkle:shortVersionString>
             <sparkle:minimumSystemVersion>14.6</sparkle:minimumSystemVersion>
-            <enclosure url="https://github.com/neolee/sct/releases/download/v1.0.4/SCT.dmg" length="2641234" type="application/octet-stream" sparkle:edSignature="R5eVIMn9gJZq3htptVqRmQTZ85UKwS85flWKPAGRy9zXbTPewPu1lOmsUkeoiJ6y1lqeFmqhJV9iYivAwYG1Cg=="/>
+            <enclosure url="https://github.com/neolee/sct/releases/download/v1.0.3/SCT.dmg" length="2643172" type="application/octet-stream" sparkle:edSignature="MfedLf3kUEJ1Psql7goo0KgZfiNXa09/vIWHT1Uob83eA8GI1pGGS5SKNGwG58eZY9gg8HboFNPPksKiucDbBQ=="/>
         </item>
         <item>
             <title>1.0.2</title>
