@@ -27,6 +27,18 @@ final class RimeConfigManager: ObservableObject {
     // Data Safety & Undo
     var undoManager: UndoManager?
     private var isDirty = false
+
+    private var dictionaryKeyWhitelist: Set<String> = [
+        "app_options",
+        "ascii_composer/switch_key",
+        "punctuator/full_shape",
+        "punctuator/half_shape"
+    ]
+
+    func setDictionaryKeyWhitelist(_ whitelist: Set<String>) {
+        guard !whitelist.isEmpty else { return }
+        dictionaryKeyWhitelist = whitelist
+    }
     private var hasCreatedSessionBackup = false
     private let maxBackups = 20
 
@@ -643,18 +655,7 @@ final class RimeConfigManager: ObservableObject {
 
         // Handle Double to ensure clean YAML output without scientific notation
         if let doubleValue = value as? Double {
-            // Using Decimal with a fixed locale to ensure consistent string conversion
-            let rounded = (doubleValue * 10000).rounded() / 10000
-            let formatter = NumberFormatter()
-            formatter.locale = Locale(identifier: "en_US")
-            formatter.maximumFractionDigits = 4
-            formatter.numberStyle = .decimal
-            if let formattedString = formatter.string(from: NSNumber(value: rounded)),
-               let decimal = Decimal(string: formattedString, locale: Locale(identifier: "en_US")) {
-                finalValue = decimal
-            } else {
-                finalValue = rounded
-            }
+            finalValue = normalizeDecimalValue(doubleValue)
         }
 
         // 1. Update mergedConfigs for immediate UI update
@@ -666,7 +667,7 @@ final class RimeConfigManager: ObservableObject {
         // 1.5 Update patchConfigs for YAML editor
         var patch = patchConfigs[domain] ?? [:]
         patch[keyPath] = finalValue
-        patchConfigs[domain] = patch
+        patchConfigs[domain] = normalizeFlatPatch(patch)
 
         // 3. Save to .custom.yaml (Debounced)
         let taskKey = "\(domain.rawValue)/\(keyPath)"
@@ -708,7 +709,9 @@ final class RimeConfigManager: ObservableObject {
     private func saveFullPatch(in domain: ConfigDomain) {
         withSecurityScopedAccess {
             var root = loadPatchRoot(for: domain)
-            root["patch"] = patchConfigs[domain] ?? [:]
+            let normalized = normalizeFlatPatch(patchConfigs[domain] ?? [:])
+            patchConfigs[domain] = normalized
+            root["patch"] = normalized
             savePatchRoot(root, for: domain)
         }
     }
@@ -797,7 +800,7 @@ final class RimeConfigManager: ObservableObject {
             // Use flat keys (e.g., "style/font_face") instead of nested structures.
             // This is the most robust way to patch Rime configs without overwriting sibling keys.
             patch[keyPath] = value
-            root["patch"] = patch
+            root["patch"] = normalizeFlatPatch(patch)
 
             savePatchRoot(root, for: domain)
         }
@@ -840,13 +843,102 @@ final class RimeConfigManager: ObservableObject {
         for (key, value) in dict {
             let fullKey = prefix.isEmpty ? key : "\(prefix)/\(key)"
             if let subDict = value as? [String: Any] {
-                let subFlat = flattenDictionary(subDict, prefix: fullKey)
-                flat.merge(subFlat) { (_, new) in new }
+                if dictionaryKeyWhitelist.contains(fullKey) {
+                    flat[fullKey] = normalizeValue(subDict)
+                    continue
+                }
+                if key.contains("/") {
+                    flat[fullKey] = normalizeValue(subDict)
+                } else {
+                    let subFlat = flattenDictionary(subDict, prefix: fullKey)
+                    flat.merge(subFlat) { (_, new) in new }
+                }
             } else {
                 flat[fullKey] = value
             }
         }
         return flat
+    }
+
+    /// Normalizes flat patch keys to avoid parent/child duplicates.
+    /// If a parent key exists, any descendant keys are merged into it (when parent is a dictionary) and removed.
+    private func normalizeFlatPatch(_ patch: [String: Any]) -> [String: Any] {
+        var normalized = patch
+        let sortedKeys = normalized.keys.sorted { $0.count < $1.count }
+
+        for parentKey in dictionaryKeyWhitelist {
+            let prefix = parentKey + "/"
+            let childKeys = normalized.keys.filter { $0.hasPrefix(prefix) }
+            guard !childKeys.isEmpty else { continue }
+
+            var parentDict = normalized[parentKey] as? [String: Any] ?? [:]
+            for childKey in childKeys {
+                guard let childValue = normalized[childKey] else { continue }
+                let remaining = childKey.dropFirst(prefix.count)
+                let components = remaining.split(separator: "/").map(String.init)
+                insert(value: childValue, for: components[...], into: &parentDict)
+                normalized.removeValue(forKey: childKey)
+            }
+            normalized[parentKey] = parentDict
+        }
+
+        for parentKey in sortedKeys {
+            let prefix = parentKey + "/"
+            let childKeys = normalized.keys.filter { $0.hasPrefix(prefix) }
+            guard !childKeys.isEmpty else { continue }
+
+            if var parentDict = normalized[parentKey] as? [String: Any] {
+                for childKey in childKeys {
+                    guard let childValue = normalized[childKey] else { continue }
+                    let remaining = childKey.dropFirst(prefix.count)
+                    let components = remaining.split(separator: "/").map(String.init)
+                    insert(value: childValue, for: components[...], into: &parentDict)
+                    normalized.removeValue(forKey: childKey)
+                }
+                normalized[parentKey] = parentDict
+            } else {
+                for childKey in childKeys {
+                    normalized.removeValue(forKey: childKey)
+                }
+            }
+        }
+
+        var numericNormalized: [String: Any] = [:]
+        for (key, value) in normalized {
+            numericNormalized[key] = normalizePatchValue(value)
+        }
+        return numericNormalized
+    }
+
+    private func normalizePatchValue(_ value: Any) -> Any {
+        if let doubleValue = value as? Double {
+            return normalizeDecimalValue(doubleValue)
+        }
+        if let dict = value as? [String: Any] {
+            var normalizedDict: [String: Any] = [:]
+            for (key, subValue) in dict {
+                normalizedDict[key] = normalizePatchValue(subValue)
+            }
+            return normalizedDict
+        }
+        if let array = value as? [Any] {
+            return array.map { normalizePatchValue($0) }
+        }
+        return value
+    }
+
+    private func normalizeDecimalValue(_ doubleValue: Double) -> Any {
+        // Using Decimal with a fixed locale to ensure consistent string conversion
+        let rounded = (doubleValue * 10000).rounded() / 10000
+        let formatter = NumberFormatter()
+        formatter.locale = Locale(identifier: "en_US")
+        formatter.maximumFractionDigits = 4
+        formatter.numberStyle = .decimal
+        if let formattedString = formatter.string(from: NSNumber(value: rounded)),
+           let decimal = Decimal(string: formattedString, locale: Locale(identifier: "en_US")) {
+            return decimal
+        }
+        return rounded
     }
 
     private func loadPatchDictionary(named fileName: String) -> [String: Any] {
@@ -857,7 +949,7 @@ final class RimeConfigManager: ObservableObject {
               let patch = root["patch"] as? [String: Any] else {
             return [:]
         }
-          return flattenDictionary(patch)
+                    return normalizeFlatPatch(flattenDictionary(patch))
     }
 
     private func loadYamlDictionary(named fileName: String) -> [String: Any] {

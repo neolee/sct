@@ -119,6 +119,7 @@
           "description": "切换到英文模式前的行为，‘行内英文’会在回车输入英文后切回中文模式",
           "type": "keyMapping",
           "keyPath": "ascii_composer/switch_key",
+          "preserveDictionary": true,
           "choices": [
             "commit_code",
             "commit_text",
@@ -161,13 +162,15 @@
           "id": "fullShape",
           "label": "全角映射",
           "type": "mapping",
-          "keyPath": "punctuator/full_shape"
+          "keyPath": "punctuator/full_shape",
+          "preserveDictionary": true
         },
         {
           "id": "halfShape",
           "label": "半角映射",
           "type": "mapping",
-          "keyPath": "punctuator/half_shape"
+          "keyPath": "punctuator/half_shape",
+          "preserveDictionary": true
         },
         {
           "id": "patterns",
@@ -407,6 +410,7 @@
           "description": "为特定应用程序设置输入行为（如在终端中默认使用英文）",
           "type": "appOptions",
           "keyPath": "app_options",
+          "preserveDictionary": true,
           "columns": [
             {"key": "bundleID", "label": "应用程序 ID", "type": "text", "isKey": true},
             {"key": "ascii_mode", "label": "默认英文", "type": "toggle"},

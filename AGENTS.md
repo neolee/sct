@@ -96,7 +96,7 @@ The "Advanced Settings" tab is designed as a **Smart Configuration Browser** to 
 - **Source Fallback**: For complex types (nested objects or arrays), provides a mini YAML source editor.
 - **Full Source Mode**: A dedicated sub-tab for direct editing of the `.custom.yaml` file with syntax validation.
 
-### 4. Advanced Settings Refinement (2025-12-19)
+### 4. Advanced Settings Refinement
 - **Duplicate Entry Fix**: Resolved an issue where customized keys appeared twice by ensuring the patch dictionary is normalized (nested) before merging into the base configuration.
 - **Unified Text Editor**: Replaced type-specific controls (Toggle, Stepper, etc.) with a consistent `TextField` for all values in the Advanced view. This provides a more "pro" feel and avoids UI clutter.
 - **Smart Parsing**: Implemented a `parseValue` helper to automatically convert text input back to `Bool`, `Int`, or `Double` where appropriate, maintaining YAML type integrity.
@@ -106,14 +106,18 @@ The "Advanced Settings" tab is designed as a **Smart Configuration Browser** to 
     - Enabled full-row click to focus the editor.
     - Implemented "Select All" on focus for faster editing.
 
-## Refinement and Cleanup (2025-12-20)
-- **Permission Management Refactoring**: Created `withSecurityScopedAccess` helper in `RimeConfigManager` to centralize sandbox access logic and reduce redundancy.
-- **UI String Consolidation**: Cleaned up `L10n.swift`, consolidated similar strings (e.g., `saveSuccess`), and moved remaining hardcoded strings (like "When", "Accept", "default.yaml") to the localization file.
-- **Code Cleanup**: Removed unused methods like `updateVirtualHotkeys` and ensured consistent use of `L10n` across all views.
-- **Technical String Reversion**: Reverted `key_binder` related strings (`when`, `accept`, `always`, `composing`, etc.) to their technical English terms in `L10n.swift`. This maintains consistency with Rime's engine terminology and official documentation, as these are considered "special key names" rather than user-facing labels.
-- **Placeholder Retention**: Decided to retain `KeyBinderControl` in `SchemaDrivenView.swift` as a placeholder for future complex shortcut management features, even though it is currently unused by `ConfigSchema.json`.
+### 5. Patch Normalization & Consistency Rules (2026-01-22)
+- **Single-Source Patch Shape**: Patch data is stored as flat key paths (e.g., `style/font_face`) and normalized to avoid parent/child duplicates.
+- **Dictionary Whitelist**: Derived from schema fields with `preserveDictionary: true` and treated as dictionary-valued leaves (not flattened into atomic sub-keys).
+- **Normalization Behavior**:
+    - On load, patch is flattened and then normalized; any child keys under a whitelisted parent are merged into the parent dictionary and removed.
+    - On save, normalization is applied again to prevent duplicate parent/child keys.
+    - Empty dictionaries are preserved (e.g., newly added `app_options` rows).
+- **Slash-Key Safety**: If a YAML key itself contains `/`, it is treated as a literal key and kept as a leaf (not recursively flattened).
+- **Numeric Formatting**: All `Double` values are normalized to `Decimal` before writing YAML, preventing scientific notation (e.g., `0.8` instead of `8e-1`).
+- **Advanced Editor Commit**: Advanced text edits only save on Enter; loss of focus or ESC reverts the draft to the current value.
 
-## Distribution & Update Strategy (Finalized 2025-12-21)
+## Distribution & Update Strategy
 
 ### 1. Core Stack
 - **Hosting**: GitHub Releases (for binaries and metadata).
@@ -174,48 +178,3 @@ Add the following to your repository settings under **Settings > Secrets and var
 7.  **`SPARKLE_PRIVATE_KEY`**:
     - **获取方式**: 运行 Sparkle 工具包中的 `./bin/generate_keys`。
     - **查看**: 该命令会输出 `Private key` 和 `Public key`。将 `Private key` 的内容完整复制到此 Secret 中。
-
-## Plan and Progress
-- [x] Initial project scaffolding (2025-12-18).
-- [x] Basic `RimeConfigManager` structure for YAML handling (2025-12-18).
-- [x] UI prototype with `NavigationSplitView` sidebar and basic forms (2025-12-18).
-- [x] Integration with `Yams` library (2025-12-18).
-- [x] Robust patch merging implementation (2025-12-18).
-- [x] BGR <-> RGB color conversion utility (2025-12-18).
-- [x] Schema-driven UI generation to support future Rime features without code changes.
-- [x] Schema expansion: update ConfigSchema.json per the grouping decisions and expose values via RimeConfigManager (2025-12-18).
-- [x] Navigation UI: wire each configuration group to its own NavigationSplitView destination; keep SchemaDrivenView as a prototype surface (2025-12-18).
-- [x] Key binder view: build UI for common bindings (commit-first/last, prev/next, paging) and persist changes (2025-12-19).
-- [x] App options table: support add/remove rows with ascii_mode/inline/no_inline/vim_mode toggles plus validation and sorting (2025-12-19).
-- [x] App selection: allow users to select apps from /Applications to get Bundle ID (2025-12-19).
-- [x] UI Polish: rename "App Options" to "应用程序" and "Bundle ID" to "应用程序 ID" (2025-12-19).
-- [x] YAML editor prototype: merged + diff views, search/filter, and an Enable Customization switch per entry (2025-12-19).
-- [x] Advanced "Source Code" mode for direct YAML editing (2025-12-19).
-- [x] Sandbox reactivation: re-enable App Sandbox, request `~/Library/Rime` access, persist the bookmark, retest reload/deploy (2025-12-20).
-- [x] Documentation and user friendly help within the app (Added HelpView and field descriptions) (2025-12-20).
-- [x] UI String Consolidation: Created `L10n.swift` to centralize static UI strings and moved Help content to `Help.md` (2025-12-20).
-- [x] Markdown-based Help system: Refactored `HelpView` to load content from an external `Help.md` file for easier maintenance (2025-12-20).
-- [x] Fix Markdown rendering: Integrated `MarkdownUI` library for professional rendering of headers, lists, and GitHub Flavored Markdown (2025-12-20).
-- [x] Configuration backup strategy and mechanism (2025-12-21).
-- [x] Undo/Redo capability (2025-12-21).
-- [x] Sparkle 2 integration for auto-updates (2025-12-21).
-- [x] GitHub Actions CI/CD pipeline setup (2025-12-21).
-- [x] Final polish and distribution preparation (2025-12-21).
-
-## Post-1.0.0 Cleanup and Refactoring (2025-12-22)
-
-### 1. Redundancy Removal
-- **RimeConfigManager**: Removed unused `@Published` properties (`pageSize`, `colorScheme`, `fontFace`, `fontPoint`, `schemaList`) and the `AppOption` struct. These were remnants of early prototypes and are now handled dynamically via `mergedConfigs` and `ConfigSchema.json`.
-- **Logic Consolidation**: Deleted `applyMergedValues()` as it was only responsible for syncing the now-removed properties.
-
-### 2. Code Architecture Improvements
-- **Saving Logic**: Extracted `loadPatchRoot` and `savePatchRoot` in `RimeConfigManager` to centralize YAML file operations and reduce duplication between `saveToPatch` and `saveFullPatch`.
-- **UI Bindings**: Implemented a generic `binding(for:domain:defaultValue:)` helper in `SchemaFieldRow` to eliminate repetitive `Binding(get:set:)` boilerplate across different control types.
-- **Model Extensions**: Moved `SchemaField` convenience extensions (`minInt`, `maxInt`, `defaultInt`) from `SchemaDrivenView.swift` to `SchemaStore.swift` to keep model logic closer to the data definition.
-
-### 3. Performance & Robustness
-- **Caching**: Retained `choicesCache` and `labelsCache` but ensured they are cleared appropriately during config reloads.
-- **Type Safety**: Improved `asInt` and `asDouble` helpers to handle `Decimal` types returned by Yams, preventing potential type mismatch crashes.
-
-### 4. CI/CD Pipeline Enhancements
-- **Build With Latest SDK**: force GitHub use `macos-26` runner to ensure compatibility with the latest macOS SDK.

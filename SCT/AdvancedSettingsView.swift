@@ -70,6 +70,8 @@ struct AdvancedRowView: View {
     @ObservedObject var manager: RimeConfigManager
 
     @FocusState private var isFocused: Bool
+    @State private var draftText: String = ""
+    @State private var didInitializeDraft = false
 
     var body: some View {
         let isCustomized = manager.isCustomized(key, in: domain)
@@ -128,24 +130,37 @@ struct AdvancedRowView: View {
             }
 
             if isCustomized {
-                TextField("", text: Binding(
-                    get: { rawString(from: value) },
-                    set: { newValue in
-                        let parsed = parseValue(newValue)
-                        manager.updateValue(parsed, for: key, in: domain)
-                    }
-                ))
-                .textFieldStyle(.roundedBorder)
-                .font(.system(.body, design: .monospaced))
-                .focused($isFocused)
-                .onChange(of: isFocused) { _, newValue in
-                    if newValue {
-                        // Select all text when focused
-                        DispatchQueue.main.async {
-                            NSApp.sendAction(#selector(NSText.selectAll(_:)), to: nil, from: nil)
+                TextField("", text: $draftText)
+                    .textFieldStyle(.roundedBorder)
+                    .font(.system(.body, design: .monospaced))
+                    .focused($isFocused)
+                    .onAppear {
+                        if !didInitializeDraft {
+                            draftText = rawString(from: value)
+                            didInitializeDraft = true
                         }
                     }
-                }
+                    .onChange(of: isFocused) { _, newValue in
+                        if newValue {
+                            draftText = rawString(from: value)
+                            // Select all text when focused
+                            DispatchQueue.main.async {
+                                NSApp.sendAction(#selector(NSText.selectAll(_:)), to: nil, from: nil)
+                            }
+                        } else {
+                            // Revert draft when focus is lost without submit
+                            draftText = rawString(from: value)
+                        }
+                    }
+                    .onExitCommand {
+                        // ESC: revert to current value and dismiss focus
+                        draftText = rawString(from: value)
+                        isFocused = false
+                    }
+                    .onSubmit {
+                        let parsed = parseValue(draftText)
+                        manager.updateValue(parsed, for: key, in: domain)
+                    }
             } else {
                 Text(SchemaValueFormatter.string(from: value ?? "—"))
                     .font(.callout)

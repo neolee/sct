@@ -89,9 +89,13 @@ struct ContentView: View {
             manager.undoManager = undoManager
             manager.reload()
             schemaStore.loadSchema()
+            manager.setDictionaryKeyWhitelist(schemaStore.dictionaryWhitelist)
         }
         .onChange(of: undoManager) { _, newValue in
             manager.undoManager = newValue
+        }
+        .onChange(of: schemaStore.dictionaryWhitelist) { _, newValue in
+            manager.setDictionaryKeyWhitelist(newValue)
         }
     }
 

@@ -45,6 +45,7 @@ struct SchemaField: Decodable, Identifiable, Hashable {
     let keys: [String]?
     let pairLabels: [String]?
     let itemSchema: String?
+    let preserveDictionary: Bool?
 }
 
 struct SchemaFieldDataSource: Decodable, Hashable {
@@ -104,6 +105,7 @@ final class SchemaStore: ObservableObject {
     @Published var schema: ConfigSchema?
     @Published var errorMessage: String?
     @Published var availableFonts: [String] = []
+    @Published var dictionaryWhitelist: Set<String> = []
 
     init() {
         loadSchema()
@@ -128,10 +130,22 @@ final class SchemaStore: ObservableObject {
         do {
             let data = try Data(contentsOf: url)
             let decoder = JSONDecoder()
-            schema = try decoder.decode(ConfigSchema.self, from: data)
+            let loadedSchema = try decoder.decode(ConfigSchema.self, from: data)
+            schema = loadedSchema
+            dictionaryWhitelist = extractDictionaryWhitelist(from: loadedSchema)
         } catch {
             errorMessage = String(format: L10n.schemaParseFailed, error.localizedDescription)
         }
+    }
+
+    private func extractDictionaryWhitelist(from schema: ConfigSchema) -> Set<String> {
+        var whitelist: Set<String> = []
+        for section in schema.sections {
+            for field in section.fields where field.preserveDictionary == true {
+                whitelist.insert(field.keyPath)
+            }
+        }
+        return whitelist
     }
 
     private func developmentSchemaURL() -> URL? {
