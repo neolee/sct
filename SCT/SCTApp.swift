@@ -15,6 +15,7 @@ struct SCTApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()
+                .environmentObject(updaterViewModel)
         }
         .commands {
             // Remove unnecessary menu items

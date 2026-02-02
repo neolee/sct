@@ -3,7 +3,14 @@ import MarkdownUI
 
 struct HelpView: View {
     @ObservedObject var manager: RimeConfigManager
+    @EnvironmentObject var updater: UpdaterViewModel
     @State private var helpContent: String = L10n.loadingHelp
+
+    private var versionString: String {
+        let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0.0.0"
+        let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "0"
+        return "\(version) (Build \(build))"
+    }
 
     var body: some View {
         ScrollView {
@@ -63,7 +70,7 @@ struct HelpView: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(L10n.appTitle)
                         .font(.headline)
-                    Text(String(format: L10n.version, "1.0.0 (Build 20251219)"))
+                    Text(String(format: L10n.version, versionString))
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                     Text(L10n.copyright)
@@ -71,12 +78,11 @@ struct HelpView: View {
                         .foregroundStyle(.tertiary)
 
                     Button(L10n.checkUpdates) {
-                        if let url = URL(string: "https://github.com/paradigmx/rime-sct") {
-                            NSWorkspace.shared.open(url)
-                        }
+                        updater.checkForUpdates()
                     }
                     .buttonStyle(.link)
                     .font(.caption)
+                    .disabled(!updater.canCheckForUpdates)
 
                     Button(L10n.resetAccess) {
                         manager.resetAccess()
@@ -99,4 +105,5 @@ extension String {
 
 #Preview {
     HelpView(manager: RimeConfigManager())
+        .environmentObject(UpdaterViewModel())
 }
