@@ -2,7 +2,7 @@
 
 *更多截图参见 [Screens](Screens) 目录下*
 
-![SCT Screenshot](Screens/schemas.png)
+![SCT Screenshot](Resources/Screens/schemas.png)
 
 SCT 是专为 macOS 上的 [鼠须管 (Squirrel)](https://github.com/rime/squirrel) 输入法设计的原生 GUI 配置工具，旨在为用户提供一种简洁、安全且高效的方式来管理和定制 Rime 输入法的各种设置，（大多数情况下）无需直接编辑复杂的 YAML 配置文件。
 

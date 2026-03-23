@@ -51,19 +51,11 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
-		B54D0ADB2EF412FA00C68277 /* Recovered References */ = {
-			isa = PBXGroup;
-			children = (
-			);
-			name = "Recovered References";
-			sourceTree = "<group>";
-		};
 		B5AF882D2EF3F059000868B9 = {
 			isa = PBXGroup;
 			children = (
 				B5AF88382EF3F059000868B9 /* SCT */,
 				B5AF88372EF3F059000868B9 /* Products */,
-				B54D0ADB2EF412FA00C68277 /* Recovered References */,
 			);
 			sourceTree = "<group>";
 		};
